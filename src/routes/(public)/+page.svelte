@@ -169,7 +169,7 @@
 			<!-- Logo Display -->
 			<div class="mb-8">
 				<img
-					src="https://storage.contractchecker.net/no-background.png"
+					src="https://storage.contractchecker.net/landing.webp"
 					alt="ContractChecker Logo"
 					class="mx-auto w-48 h-48 object-contain drop-shadow-lg"
 				/>
