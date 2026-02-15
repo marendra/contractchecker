@@ -1,14 +1,14 @@
 import { initializeApp, type FirebaseOptions } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithEmailLink, sendSignInLinkToEmail, isSignInWithEmailLink } from "firebase/auth";
 
-// Firebase configuration - replace with your actual config
+// Firebase configuration
 const firebaseConfig: FirebaseOptions = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "your-api-key",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "your-project.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "your-project-id",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "your-project.appspot.com",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:123456789:web:abcdef"
+  apiKey: "AIzaSyDSSW8_6pIMc2YF7aC2Ie8K_FtdBfJ3Q3s",
+  authDomain: "contractchecker-srv.firebaseapp.com",
+  projectId: "contractchecker-srv",
+  storageBucket: "contractchecker-srv.firebasestorage.app",
+  messagingSenderId: "244013314003",
+  appId: "1:244013314003:web:59f15afda5cb0e41fd8926"
 };
 
 const app = initializeApp(firebaseConfig);
