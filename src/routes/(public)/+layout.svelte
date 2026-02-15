@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
-	import { isAuthenticated } from "$lib/stores/auth";
+	import { isAuthenticated, isAnonymousUser } from "$lib/stores/auth";
 	import { Shield } from "lucide-svelte";
 	import { onMount } from "svelte";
 
 	let { children } = $props();
 
-	// Redirect to dashboard if already authenticated
+	// Redirect to dashboard if authenticated (but not anonymous)
 	onMount(() => {
 		const unsubscribe = isAuthenticated.subscribe((isAuth) => {
+			// Only redirect if truly authenticated (not anonymous)
 			if (isAuth && typeof window !== "undefined") {
 				goto("/dashboard");
 			}
@@ -21,13 +22,8 @@
 {#if !$isAuthenticated}
 	{@render children()}
 {:else}
-	<!-- Loading/redirect state -->
-	<div class="min-h-screen flex items-center justify-center bg-slate-50">
-		<div class="animate-pulse flex items-center gap-2">
-			<Shield class="h-6 w-6 text-electric-blue" />
-			<span class="text-slate-600">Redirecting...</span>
-		</div>
-	</div>
+	<!-- Anonymous user or loading state - show children -->
+	{@render children()}
 {/if}
 
 <style>

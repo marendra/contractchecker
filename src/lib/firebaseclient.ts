@@ -12,10 +12,13 @@ const firebaseConfig: FirebaseOptions = {
   appId: "1:244013314003:web:59f15afda5cb0e41fd8926"
 };
 
+// Firestore database name
+const FIRESTORE_DB = "contract-checker";
+
 // Initialize Firebase - only once
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const db = getFirestore(app, FIRESTORE_DB);
 export const googleProvider = new GoogleAuthProvider();
 
 // Email magic link configuration
@@ -68,7 +71,7 @@ export async function joinWaitlist(email: string): Promise<{ success: boolean; e
       return { success: true };
     }
 
-    // Sign in anonymously
+    // Sign in anonymously (only for write permission)
     await signInAnonymously(auth);
 
     // Add to waitlist
@@ -78,7 +81,7 @@ export async function joinWaitlist(email: string): Promise<{ success: boolean; e
       status: "pending"
     });
 
-    // Sign out
+    // Sign out anonymous user immediately
     await signOut(auth);
 
     return { success: true };

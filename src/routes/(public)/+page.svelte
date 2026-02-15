@@ -505,10 +505,10 @@
 				<div class="mx-auto w-12 h-12 rounded-full bg-verdict-green flex items-center justify-center mb-4">
 					<Check class="h-6 w-6 text-white" />
 				</div>
-				<p class="font-medium text-deep-justice mb-2">Success!</p>
-				<p class="text-slate-600 text-sm">We will inform you shortly.</p>
+				<p class="font-medium text-deep-justice mb-2">You're on the list!</p>
+				<p class="text-slate-600 text-sm mb-4">We will notify you as soon as we're ready.</p>
 				<Button
-					class="mt-6 w-full bg-electric-blue hover:bg-blue-700"
+					class="w-full bg-electric-blue hover:bg-blue-700"
 					onclick={() => showWaitlistModal = false}
 				>
 					Close

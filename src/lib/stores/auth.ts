@@ -9,6 +9,7 @@ export interface AuthUser {
 	displayName: string | null;
 	photoURL: string | null;
 	emailVerified: boolean;
+	isAnonymous: boolean;
 }
 
 // Core auth state
@@ -35,7 +36,8 @@ const createAuthStore = () => {
 						email: firebaseUser.email,
 						displayName: firebaseUser.displayName,
 						photoURL: firebaseUser.photoURL,
-						emailVerified: firebaseUser.emailVerified
+						emailVerified: firebaseUser.emailVerified,
+						isAnonymous: firebaseUser.isAnonymous
 					},
 					loading: false,
 					initialized: true
@@ -70,7 +72,13 @@ const createAuthStore = () => {
 export const authStore = createAuthStore();
 
 // Derived stores for common checks
-export const isAuthenticated: Readable<boolean> = derived(authStore, ($store) => !!$store.user);
+// Note: isAuthenticated returns false for anonymous users (waitlist)
+export const isAuthenticated: Readable<boolean> = derived(authStore, ($store) => {
+	return !!$store.user && !$store.user?.isAnonymous;
+});
+export const isAnonymousUser: Readable<boolean> = derived(authStore, ($store) => {
+	return !!$store.user && $store.user?.isAnonymous === true;
+});
 export const currentUser: Readable<AuthUser | null> = derived(authStore, ($store) => $store.user);
 export const isLoading: Readable<boolean> = derived(authStore, ($store) => $store.loading);
 export const isInitialized: Readable<boolean> = derived(authStore, ($store) => $store.initialized);
