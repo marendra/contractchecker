@@ -90,11 +90,37 @@
 </script>
 
 <svelte:head>
-	<title>ContractChecker.net - The $5 Lawyer | Instant Contract Analysis</title>
-	<meta
-		name="description"
-		content="Professional legal review for the price of a coffee. Get instant AI-powered contract analysis to find red flags before you sign."
-	/>
+	<title>ContractChecker.net | The $5 AI Legal Assistant</title>
+	<meta name="description" content="Don't sign blindly. Get instant AI contract analysis for $5. We spot hidden fees, risky clauses, and red flags in seconds." />
+	<link rel="canonical" href="https://www.contractchecker.net/" />
+
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://www.contractchecker.net/" />
+	<meta property="og:title" content="ContractChecker.net | The $5 Lawyer" />
+	<meta property="og:description" content="Upload your contract. Find the red flags. Save $500 on legal fees." />
+	<meta property="og:image" content="https://storage.contractchecker.net/og-image.jpg" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content="ContractChecker.net | The $5 Lawyer" />
+	<meta name="twitter:description" content="Instant AI risk analysis for your contracts." />
+	<meta name="twitter:image" content="https://storage.contractchecker.net/og-image.jpg" />
+
+	{@html `
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "ContractChecker.net",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "5.00",
+        "priceCurrency": "USD"
+      },
+      "description": "AI-powered contract analysis tool that identifies legal risks, hidden fees, and liabilities in seconds."
+    }
+    </script>
+    `}
 </svelte:head>
 
 <div class="min-h-screen bg-slate-50">
