@@ -1,5 +1,6 @@
 import { initializeApp, type FirebaseOptions } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithEmailLink, sendSignInLinkToEmail, isSignInWithEmailLink } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithEmailLink, sendSignInLinkToEmail, isSignInWithEmailLink, signInAnonymously, signOut } from "firebase/auth";
+import { getFirestore, collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 
 // Firebase configuration
 const firebaseConfig: FirebaseOptions = {
@@ -13,6 +14,7 @@ const firebaseConfig: FirebaseOptions = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
 // Email magic link configuration
@@ -51,4 +53,38 @@ export function getStoredEmail(): string | null {
 export function clearStoredEmail(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem("magicLinkEmail");
+}
+
+// Waitlist functions
+export async function joinWaitlist(email: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Check if email already exists
+    const waitlistQuery = query(
+      collection(db, "waitlist"),
+      where("email", "==", email.toLowerCase().trim())
+    );
+    const snapshot = await getDocs(waitlistQuery);
+
+    if (!snapshot.empty) {
+      return { success: true }; // Already registered
+    }
+
+    // Sign in anonymously
+    await signInAnonymously(auth);
+
+    // Add to waitlist
+    await addDoc(collection(db, "waitlist"), {
+      email: email.toLowerCase().trim(),
+      timestamp: serverTimestamp(),
+      status: "pending"
+    });
+
+    // Sign out
+    await signOut(auth);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Waitlist error:", error);
+    return { success: false, error: "Failed to join waitlist. Please try again." };
+  }
 }

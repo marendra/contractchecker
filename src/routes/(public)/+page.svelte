@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button } from "$lib/components/ui/button";
+	import { Input } from "$lib/components/ui/input";
 
 	import {
 		Card,
@@ -11,6 +12,7 @@
 	} from "$lib/components/ui/card";
 	import { Badge } from "$lib/components/ui/badge";
 	import * as Accordion from "$lib/components/ui/accordion";
+	import { Modal } from "$lib/components/ui/modal.svelte";
 	import {
 		Shield,
 		Upload,
@@ -22,8 +24,10 @@
 		Coffee,
 		Briefcase,
 		ArrowRight,
-		FileText
+		FileText,
+		Loader2
 	} from "lucide-svelte";
+	import { joinWaitlist } from "$lib/firebaseclient";
 
 	const features = [
 		{
@@ -90,6 +94,56 @@
 	];
 
 	let showBanner = $state(true);
+	let showWaitlistModal = $state(false);
+	let waitlistEmail = $state("");
+	let honeypot = $state(""); // Hidden field for spam detection
+	let waitlistLoading = $state(false);
+	let waitlistSuccess = $state(false);
+	let waitlistError = $state("");
+
+	async function handleWaitlistSubmit() {
+		// Spam check: honeypot field should be empty
+		if (honeypot !== "") {
+			waitlistSuccess = true;
+			waitlistEmail = "";
+			return;
+		}
+
+		if (!waitlistEmail || !waitlistEmail.includes("@")) {
+			waitlistError = "Please enter a valid email address.";
+			return;
+		}
+
+		// Basic email format validation
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		if (!emailRegex.test(waitlistEmail)) {
+			waitlistError = "Please enter a valid email address.";
+			return;
+		}
+
+		waitlistLoading = true;
+		waitlistError = "";
+
+		const result = await joinWaitlist(waitlistEmail);
+
+		if (result.success) {
+			waitlistSuccess = true;
+			waitlistEmail = "";
+			honeypot = "";
+		} else {
+			waitlistError = result.error || "Something went wrong. Please try again.";
+		}
+
+		waitlistLoading = false;
+	}
+
+	function openWaitlistModal() {
+		showWaitlistModal = true;
+		waitlistEmail = "";
+		honeypot = "";
+		waitlistSuccess = false;
+		waitlistError = "";
+	}
 </script>
 
 <svelte:head>
@@ -154,9 +208,8 @@
 					<a href="#faq" class="text-sm font-medium text-slate-600 hover:text-electric-blue transition-colors">
 						FAQ
 					</a>
-					<Button variant="ghost" href="/login">Sign In</Button>
-					<Button class="bg-electric-blue hover:bg-blue-700" href="/login">
-						Get Started
+					<Button class="bg-electric-blue hover:bg-blue-700" onclick={openWaitlistModal}>
+						Join Waitlist
 					</Button>
 				</div>
 			</div>
@@ -444,6 +497,80 @@
 			</div>
 		</div>
 	</footer>
+
+	<!-- Waitlist Modal -->
+	<Modal bind:open={showWaitlistModal} title="Join the Waitlist">
+		{#if waitlistSuccess}
+			<div class="text-center py-4">
+				<div class="mx-auto w-12 h-12 rounded-full bg-verdict-green flex items-center justify-center mb-4">
+					<Check class="h-6 w-6 text-white" />
+				</div>
+				<p class="font-medium text-deep-justice mb-2">Success!</p>
+				<p class="text-slate-600 text-sm">We will inform you shortly.</p>
+				<Button
+					class="mt-6 w-full bg-electric-blue hover:bg-blue-700"
+					onclick={() => showWaitlistModal = false}
+				>
+					Close
+				</Button>
+			</div>
+		{:else}
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					handleWaitlistSubmit();
+				}}
+				class="space-y-4"
+			>
+				<p class="text-slate-600 text-sm">
+					Be the first to experience AI-powered contract analysis. Enter your email to join the waitlist.
+				</p>
+
+				<!-- Honeypot field - hidden from real users, bots might fill it -->
+				<input
+					type="text"
+					name="website"
+					bind:value={honeypot}
+					tabindex="-1"
+					autocomplete="off"
+					class="hidden"
+				/>
+
+				{#if waitlistError}
+					<div class="p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
+						{waitlistError}
+					</div>
+				{/if}
+
+				<div class="space-y-2">
+					<label for="waitlist-email" class="text-sm font-medium text-deep-justice">
+						Email Address
+					</label>
+					<Input
+						id="waitlist-email"
+						type="email"
+						placeholder="you@example.com"
+						bind:value={waitlistEmail}
+						disabled={waitlistLoading}
+						required
+					/>
+				</div>
+
+				<Button
+					type="submit"
+					class="w-full bg-electric-blue hover:bg-blue-700"
+					disabled={waitlistLoading}
+				>
+					{#if waitlistLoading}
+						<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+						Joining...
+					{:else}
+						Join Waitlist
+					{/if}
+				</Button>
+			</form>
+		{/if}
+	</Modal>
 </div>
 
 <style>
@@ -471,23 +598,7 @@
 		background-color: #059669;
 	}
 
-	.text-caution-gold {
-		color: #d97706;
-	}
-
-	.bg-caution-gold {
-		background-color: #d97706;
-	}
-
-	.bg-gavel-red {
-		background-color: #dc2626;
-	}
-
 	.hover\:bg-blue-700:hover {
 		background-color: #1d4ed8;
-	}
-
-	.border-electric-blue {
-		border-color: #2563eb;
 	}
 </style>
