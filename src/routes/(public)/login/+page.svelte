@@ -39,6 +39,15 @@
 		// Initialize auth store listener
 		authStore.init();
 
+		// Security: Redirect to landing page if not on localhost or dev mode
+		const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+		const allowLogin = isLocalhost || import.meta.env.DEV === true;
+
+		if (!allowLogin) {
+			goto("/", { replaceState: true });
+			return;
+		}
+
 		if (isEmailLink()) {
 			const storedEmail = getStoredEmail();
 

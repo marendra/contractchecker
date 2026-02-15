@@ -101,14 +101,6 @@
 	let waitlistSuccess = $state(false);
 	let waitlistError = $state("");
 
-	function openWaitlistModal() {
-		showWaitlistModal = true;
-		waitlistEmail = "";
-		honeypot = "";
-		waitlistSuccess = false;
-		waitlistError = "";
-	}
-
 	async function handleWaitlistSubmit() {
 		// Spam check: honeypot field should be empty
 		if (honeypot !== "") {
@@ -143,6 +135,14 @@
 		}
 
 		waitlistLoading = false;
+	}
+
+	function openWaitlistModal() {
+		showWaitlistModal = true;
+		waitlistEmail = "";
+		honeypot = "";
+		waitlistSuccess = false;
+		waitlistError = "";
 	}
 </script>
 
@@ -209,7 +209,7 @@
 						FAQ
 					</a>
 					<Button class="bg-electric-blue hover:bg-blue-700" onclick={openWaitlistModal}>
-						Get Early Access
+						Join Waitlist
 					</Button>
 				</div>
 			</div>
@@ -238,9 +238,9 @@
 
 			<Button
 				class="bg-electric-blue hover:bg-blue-700 text-lg px-8 py-6 h-auto"
-				onclick={openWaitlistModal}
+				href="/login"
 			>
-				Get Early Access
+				Claim My Free Scan
 				<ArrowRight class="ml-2 h-5 w-5" />
 			</Button>
 
@@ -456,16 +456,16 @@
 			<div class="flex flex-col sm:flex-row gap-4 justify-center">
 				<Button
 					class="bg-electric-blue hover:bg-blue-600 text-lg px-8 py-6 h-auto"
-					onclick={openWaitlistModal}
+					href="/login"
 				>
-					Join the Waitlist
+					Get Started Free
 				</Button>
 				<Button
 					variant="outline"
 					class="border-white text-white hover:bg-white hover:text-deep-justice text-lg px-8 py-6 h-auto bg-transparent"
-					onclick={openWaitlistModal}
+					href="/login"
 				>
-					Learn More
+					Sign In to Account
 				</Button>
 			</div>
 

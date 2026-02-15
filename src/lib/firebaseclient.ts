@@ -1,4 +1,4 @@
-import { initializeApp, type FirebaseOptions } from "firebase/app";
+import { initializeApp, getApps, type FirebaseOptions } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithEmailLink, sendSignInLinkToEmail, isSignInWithEmailLink, signInAnonymously, signOut } from "firebase/auth";
 import { getFirestore, collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 
@@ -12,7 +12,8 @@ const firebaseConfig: FirebaseOptions = {
   appId: "1:244013314003:web:59f15afda5cb0e41fd8926"
 };
 
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase - only once
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
@@ -26,7 +27,6 @@ export async function sendMagicLink(email: string): Promise<void> {
     url,
     handleCodeInApp: true
   });
-  // Save email to localStorage for later verification
   if (typeof window !== "undefined") {
     localStorage.setItem("magicLinkEmail", email);
   }
@@ -34,7 +34,6 @@ export async function sendMagicLink(email: string): Promise<void> {
 
 export async function signInWithMagicLink(email: string, emailLink: string): Promise<void> {
   await signInWithEmailLink(auth, email, emailLink);
-  // Clean up after successful sign in
   if (typeof window !== "undefined") {
     localStorage.removeItem("magicLinkEmail");
   }
@@ -66,7 +65,7 @@ export async function joinWaitlist(email: string): Promise<{ success: boolean; e
     const snapshot = await getDocs(waitlistQuery);
 
     if (!snapshot.empty) {
-      return { success: true }; // Already registered
+      return { success: true };
     }
 
     // Sign in anonymously
@@ -83,8 +82,9 @@ export async function joinWaitlist(email: string): Promise<{ success: boolean; e
     await signOut(auth);
 
     return { success: true };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Waitlist error:", error);
-    return { success: false, error: "Failed to join waitlist. Please try again." };
+    const err = error as { code?: string; message?: string };
+    return { success: false, error: `Error (${err.code || 'unknown'}): ${err.message || 'Failed to join waitlist'}` };
   }
 }
