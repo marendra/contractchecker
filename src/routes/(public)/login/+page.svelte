@@ -171,7 +171,7 @@
 		<div class="text-center mb-8">
 			<div class="inline-flex items-center justify-center gap-2 mb-2">
 				<img
-					src="https://storage.contractchecker.net/logo-small.webp"
+					src="https://storage.contractchecker.net/login.webp"
 					alt="ContractChecker Logo"
 					class="h-16 w-auto"
 				/>

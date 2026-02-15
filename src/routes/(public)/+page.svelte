@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button } from "$lib/components/ui/button";
+
 	import {
 		Card,
 		CardContent,
@@ -53,7 +54,7 @@
 		newWay: {
 			title: "ContractChecker.net",
 			icon: Shield,
-			price: "$5 (One Coffee)",
+			price: "1 Free Scan (Then $5-$9)",
 			speed: "30 Seconds",
 			mood: "blue"
 		}
@@ -84,9 +85,11 @@
 		},
 		{
 			question: "How does the pricing work?",
-			answer: "Simple. Pay-as-you-go. One contract scan costs roughly the price of a coffee ($5 or Rp 50.000). No monthly subscriptions required unless you are a power user."
+			answer: "It's flexible. Your first scan is completely free. After that, single scans are $9. You can get the price down to $5 per contract by purchasing bulk credits inside the dashboard."
 		}
 	];
+
+	let showBanner = $state(true);
 </script>
 
 <svelte:head>
@@ -124,15 +127,27 @@
 </svelte:head>
 
 <div class="min-h-screen bg-slate-50">
+	<!-- Announcement Banner -->
+	{#if showBanner}
+		<div class="bg-electric-blue text-white text-sm py-2 px-4 flex justify-between items-center">
+			<span class="flex-1 text-center">
+				<strong>New User Bonus:</strong> Get 1 free scan on sign up. Verify phone for <strong>4 more free scans!</strong>
+			</span>
+			<button onclick={() => showBanner = false} class="ml-4 hover:text-slate-200 transition-colors">
+				<X class="h-4 w-4" />
+			</button>
+		</div>
+	{/if}
+
 	<!-- Navigation -->
 	<nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b border-slate-200">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="flex justify-between items-center h-16">
 				<a href="/" class="flex items-center gap-2">
 					<img
-						src="https://storage.contractchecker.net/logo-small.webp"
+						src="https://storage.contractchecker.net/header.webp"
 						alt="ContractChecker Logo"
-						class="h-8 w-auto"
+						class="h-12 w-auto"
 					/>
 				</a>
 				<div class="flex items-center gap-6">
@@ -154,27 +169,25 @@
 			<!-- Logo Display -->
 			<div class="mb-8">
 				<img
-					src="https://storage.contractchecker.net/logo-small.webp"
+					src="https://storage.contractchecker.net/no-background.png"
 					alt="ContractChecker Logo"
 					class="mx-auto w-48 h-48 object-contain drop-shadow-lg"
 				/>
 			</div>
 
 			<h1 class="font-serif text-4xl md:text-6xl font-bold text-deep-justice mb-6 leading-tight">
-				Professional Legal Review.<br />
-				<span class="text-electric-blue">Pocket Change Price.</span>
+				Don't Sign Blindly. AI Contract Analysis in Seconds.
 			</h1>
 
 			<p class="text-xl text-slate-600 mb-8 max-w-2xl mx-auto leading-relaxed">
-				Upload any contract. Our AI finds the red flags, hidden fees, and risky clauses in
-				seconds. Don't sign blindly.
+				Spot hidden fees and risky clauses. <strong class="text-electric-blue">Your first contract scan is 100% FREE.</strong>
 			</p>
 
 			<Button
 				class="bg-electric-blue hover:bg-blue-700 text-lg px-8 py-6 h-auto"
 				href="/login"
 			>
-				Check My Contract Now
+				Claim My Free Scan
 				<ArrowRight class="ml-2 h-5 w-5" />
 			</Button>
 
@@ -415,9 +428,9 @@
 			<div class="flex flex-col md:flex-row justify-between items-center gap-4">
 				<div class="flex items-center gap-2">
 					<img
-						src="https://storage.contractchecker.net/logo-small.webp"
+						src="https://storage.contractchecker.net/header.webp"
 						alt="ContractChecker Logo"
-						class="h-6 w-auto"
+						class="h-10 w-auto"
 					/>
 				</div>
 				<p class="text-slate-400 text-sm">
