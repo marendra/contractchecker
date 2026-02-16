@@ -300,9 +300,9 @@
 				<Card class="border-2 border-electric-blue shadow-lg">
 					<CardHeader class="text-center pb-2 bg-electric-blue/5">
 						<div
-							class="mx-auto mb-4 w-16 h-16 rounded-full bg-electric-blue flex items-center justify-center"
+							class="mx-auto mb-4 w-16 h-16  bg-none flex items-center justify-center"
 						>
-							<Shield class="h-8 w-8 text-white" />
+							<img src="https://storage.contractchecker.net/login.webp"  alt="comparison logo" />
 						</div>
 						<CardTitle class="font-serif text-xl text-deep-justice">
 							{lawyerComparison.newWay.title}
