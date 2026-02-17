@@ -404,6 +404,29 @@
        </div>
     </section>
 
+   <section class="py-16 px-4 bg-white border-b border-slate-200">
+       <div class="max-w-4xl mx-auto">
+          <h2 class="font-serif text-3xl font-bold text-center text-deep-justice mb-8">
+             Latest from the Blog
+          </h2>
+          <div class="grid md:grid-cols-2 gap-8 items-center">
+             <img src="https://storage.contractchecker.net/blog-freelance.webp" alt="Blog Thumbnail" class="rounded-lg shadow-md  hover:rotate-0 transition-transform duration-300" />
+             <div>
+                <span class="text-electric-blue font-bold text-sm uppercase tracking-wider">Must Read</span>
+                <h3 class="font-serif text-2xl font-bold text-deep-justice mt-2 mb-4">
+                   5 Red Flags in Upwork & Fiverr Contracts That Cost You Money
+                </h3>
+                <p class="text-slate-600 mb-6">
+                   Don't sign blindly. Learn about "Kill Fees", IP traps, and how to protect your code.
+                </p>
+                <a href="/blog/upwork-fiverr-red-flags" class="text-electric-blue font-bold hover:underline flex items-center gap-2">
+                   Read Article <ArrowRight class="h-4 w-4" />
+                </a>
+             </div>
+          </div>
+       </div>
+    </section>
+
     <section id="faq" class="py-16 px-4 bg-slate-50 scroll-mt-20">
        <div class="max-w-3xl mx-auto">
           <h2 class="font-serif text-3xl font-bold text-center text-deep-justice mb-4">
