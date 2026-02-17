@@ -20,7 +20,9 @@
        ArrowRight,
        Globe,
        AlertTriangle,
-       Loader2
+       Loader2,
+       Clock,
+       Users
     } from "lucide-svelte";
     import { joinWaitlist } from "$lib/firebaseclient";
 
@@ -42,7 +44,6 @@
        }
     ];
 
-    // REVISION: Pricing reflects the global bulk discount ($5 - $9)
     const lawyerComparison = {
        oldWay: {
           title: "Traditional Review",
@@ -55,7 +56,7 @@
        newWay: {
           title: "ContractChecker.net",
           icon: Shield,
-          price: "$5 - $9 / Scan", // Shows the bulk discount range
+          price: "$5 - $9 / Scan",
           speed: "30 Seconds",
           scope: "Checks text + Validates Company Identity.",
           mood: "blue"
@@ -68,7 +69,6 @@
        { level: "SAFE", color: "bg-verdict-green", text: "Verified Entity & Standard Terms" }
     ];
 
-    // REVISION: Removed "Rp 75k" and explained the $5 logic
     const faqs = [
        {
           question: "Is this a replacement for a real lawyer?",
@@ -88,7 +88,7 @@
        },
        {
           question: "How does the pricing work?",
-          answer: "It's a Pay-Per-Use model. Your first scan is free. After that, single scans are $9. You can get the price down to $5 per scan by purchasing bulk credits (e.g., 5 credits for $25)."
+          answer: "It's a Pay-Per-Use model. Your first scan is free (Email required). Verify your phone to unlock your full Founder's Bundle (7 scans). Bulk packs start at $5/scan."
        }
     ];
 
@@ -182,8 +182,11 @@
 <div class="min-h-screen bg-slate-50 font-sans">
     {#if showBanner}
        <div class="bg-electric-blue text-white text-sm py-2 px-4 flex justify-between items-center">
-          <span class="flex-1 text-center">
-             <strong>Early Access Bonus:</strong> Join the waitlist today to unlock <strong>7 Free Scans</strong> (normally 5).
+          <span class="flex-1 text-center flex items-center justify-center gap-2">
+             <Clock class="h-4 w-4" />
+             <span>
+                <strong>Offer Ending:</strong> The "7 Free Scans" bonus ends on <strong>May 1st</strong> or for the first <strong>1,000 Users</strong>.
+             </span>
           </span>
           <button onclick={() => showBanner = false} class="ml-4 hover:text-slate-200 transition-colors">
              <X class="h-4 w-4" />
@@ -228,10 +231,17 @@
              <span class="text-electric-blue">Check Before You Sign.</span>
           </h1>
 
-          <p class="text-xl text-slate-600 mb-8 max-w-2xl mx-auto leading-relaxed">
+          <p class="text-xl text-slate-600 mb-6 max-w-2xl mx-auto leading-relaxed">
              The only AI that reviews the <strong class="text-deep-justice">contract terms</strong> AND background checks the <strong class="text-deep-justice">client's reputation</strong>.
              <br><span class="text-electric-blue font-semibold">Join the waitlist to claim 7 Free Credits ($63 Value).</span>
           </p>
+
+          <div class="mb-8">
+              <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-50 text-gavel-red text-xs font-bold border border-red-100">
+                  <Clock class="h-3 w-3" />
+                  Offer reduced to 1 Free Scan after May 1st, 2026.
+              </span>
+          </div>
 
           <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
              <Button
@@ -548,13 +558,20 @@
              class="space-y-4 py-2"
           >
              <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
-                <p class="text-deep-justice text-sm font-semibold mb-1">
-                   🎁 Founder's Reward
-                </p>
-                <p class="text-slate-600 text-xs">
-                   Standard users get 5 free scans. <strong>Waitlist members get 7.</strong>
-                   <br>Enter your email to lock in your bonus credits.
-                </p>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-deep-justice text-sm font-semibold mb-1">
+                        🎁 Founder's Reward
+                        </p>
+                        <p class="text-slate-600 text-xs leading-relaxed">
+                        Waitlist members get <strong>7 Free Scans</strong> .
+                        <br>Offer drops to <strong>1 Scan</strong> after <span class="font-bold text-gavel-red">May 1st, 2026</span>.
+                        </p>
+                    </div>
+                    <Badge variant="outline" class="bg-white text-xs border-blue-200 text-blue-700 whitespace-nowrap">
+                        <Clock class="w-3 h-3 mr-1" /> Limited
+                    </Badge>
+                </div>
              </div>
 
              <input
@@ -605,7 +622,7 @@
              </Button>
 
              <p class="text-xs text-center text-slate-400">
-                 Limited spots available for the beta.
+                 Spots fill on a first-come, first-served basis.
              </p>
           </form>
        {/if}
