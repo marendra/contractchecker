@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { X } from "lucide-svelte";
 	import { onMount, onDestroy } from "svelte";
+	import { browser } from "$app/environment";
 
 	let { open = $bindable(false), title = "", children } = $props();
 
@@ -21,11 +22,15 @@
 	}
 
 	onMount(() => {
-		document.addEventListener("keydown", handleKeydown);
+		if (browser) {
+			document.addEventListener("keydown", handleKeydown);
+		}
 	});
 
 	onDestroy(() => {
-		document.removeEventListener("keydown", handleKeydown);
+		if (browser) {
+			document.removeEventListener("keydown", handleKeydown);
+		}
 	});
 </script>
 
