@@ -1,3 +1,12 @@
-# allow crawling everything by default
+# Allow all standard crawlers (Google, Bing, etc.)
 User-agent: *
-Disallow:
+Allow: /
+
+# Explicitly allow OpenAI (ChatGPT)
+# (Not strictly necessary as * covers it, but good for clarity)
+User-agent: GPTBot
+Allow: /
+
+# Explicitly allow Google AI (Gemini)
+User-agent: Google-Extended
+Allow: /
