@@ -4,8 +4,6 @@
     import {
        Card,
        CardContent,
-       CardDescription,
-       CardFooter,
        CardHeader,
        CardTitle
     } from "$lib/components/ui/card";
@@ -15,21 +13,17 @@
     import {
        Shield,
        Upload,
-       Scan,
-       Zap,
+       Search,
        Check,
        X,
-       Clock,
        Briefcase,
        ArrowRight,
-       Search,
        Globe,
        AlertTriangle,
        Loader2
     } from "lucide-svelte";
     import { joinWaitlist } from "$lib/firebaseclient";
 
-    // REVISION: Features now highlight the "Split-Brain" Architecture (Identity + Text) [cite: 50-73]
     const features = [
        {
           icon: Upload,
@@ -37,9 +31,9 @@
           description: "Drop your PDF. We parse the legal text and extract the client's entity details instantly."
        },
        {
-          icon: Search, // Changed to Search to represent "Investigation" [cite: 66]
+          icon: Search,
           title: "2. The 'Ghostbuster' Check",
-          description: "We don't just read the file. We search government databases (AHU, ACRA, etc.) to see if this client actually exists."
+          description: "We don't just read the file. We search government databases (US, UK, AU, SG) to see if this client actually exists."
        },
        {
           icon: Shield,
@@ -48,7 +42,7 @@
        }
     ];
 
-    // REVISION: Comparison now focuses on SCOPE (Identity vs Text) rather than just price [cite: 8]
+    // REVISION: Pricing reflects the global bulk discount ($5 - $9)
     const lawyerComparison = {
        oldWay: {
           title: "Traditional Review",
@@ -61,20 +55,20 @@
        newWay: {
           title: "ContractChecker.net",
           icon: Shield,
-          price: "$9 / Scan", // [cite: 14]
+          price: "$5 - $9 / Scan", // Shows the bulk discount range
           speed: "30 Seconds",
           scope: "Checks text + Validates Company Identity.",
           mood: "blue"
        }
     };
 
-    // REVISION: Risk levels now include "Fake Entity" warnings [cite: 49]
     const riskLevels = [
        { level: "CRITICAL", color: "bg-gavel-red", text: "Fake Entity / Identity Mismatch" },
        { level: "WARNING", color: "bg-caution-gold", text: "Unfair Clauses / Hidden Fees" },
        { level: "SAFE", color: "bg-verdict-green", text: "Verified Entity & Standard Terms" }
     ];
 
+    // REVISION: Removed "Rp 75k" and explained the $5 logic
     const faqs = [
        {
           question: "Is this a replacement for a real lawyer?",
@@ -82,7 +76,7 @@
        },
        {
           question: "How do you check if a client is real?",
-          answer: "We use a 'Split-Brain' AI. While one AI reads your contract, another AI (Perplexity-powered) searches live government databases (like AHU in Indonesia or ACRA in Singapore) and social media to verify the client's reputation."
+          answer: "We use a 'Split-Brain' AI. While one AI reads your contract, another AI (Perplexity-powered) searches live government databases (like Secretary of State in US or ACRA in Singapore) and social media to verify the client's reputation."
        },
        {
           question: "Is my contract kept private?",
@@ -94,7 +88,7 @@
        },
        {
           question: "How does the pricing work?",
-          answer: "It's a Pay-Per-Use model. Your first scan is completely free. After that, single scans are $9 (or approx Rp 75k). No monthly subscriptions."
+          answer: "It's a Pay-Per-Use model. Your first scan is free. After that, single scans are $9. You can get the price down to $5 per scan by purchasing bulk credits (e.g., 5 credits for $25)."
        }
     ];
 
@@ -163,13 +157,33 @@
     <meta name="twitter:title" content="ContractChecker.net | The Freelancer's Bodyguard" />
     <meta name="twitter:description" content="Instant background check & contract analysis." />
     <meta name="twitter:image" content="https://storage.contractchecker.net/og-image.jpg" />
+
+    {@html `
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "ContractChecker.net",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "5.00",
+        "priceCurrency": "USD",
+        "minPrice": "5.00",
+        "maxPrice": "9.00"
+      },
+      "description": "AI-powered contract analysis tool that identifies legal risks, hidden fees, and liabilities in seconds."
+    }
+    </script>
+    `}
 </svelte:head>
 
 <div class="min-h-screen bg-slate-50 font-sans">
     {#if showBanner}
        <div class="bg-electric-blue text-white text-sm py-2 px-4 flex justify-between items-center">
           <span class="flex-1 text-center">
-             <strong>Launch Offer:</strong> Get 1 free "Deep Investigation" scan on sign up.
+             <strong>Early Access Bonus:</strong> Join the waitlist today to unlock <strong>7 Free Scans</strong> (normally 5).
           </span>
           <button onclick={() => showBanner = false} class="ml-4 hover:text-slate-200 transition-colors">
              <X class="h-4 w-4" />
@@ -216,7 +230,7 @@
 
           <p class="text-xl text-slate-600 mb-8 max-w-2xl mx-auto leading-relaxed">
              The only AI that reviews the <strong class="text-deep-justice">contract terms</strong> AND background checks the <strong class="text-deep-justice">client's reputation</strong>.
-             <br><span class="text-electric-blue font-semibold">Avoid scams, ghosts, and bad payers in 30 seconds.</span>
+             <br><span class="text-electric-blue font-semibold">Join the waitlist to claim 7 Free Credits ($63 Value).</span>
           </p>
 
           <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -241,10 +255,10 @@
                 Real-time Verification Sources
             </p>
             <div class="flex flex-wrap justify-center items-center gap-8 md:gap-12 opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
-                <div class="flex items-center gap-2 font-bold text-slate-700"><Globe class="h-4 w-4"/> AHU (Indonesia)</div>
+                <div class="flex items-center gap-2 font-bold text-slate-700"><Globe class="h-4 w-4"/> SOS (USA)</div>
                 <div class="flex items-center gap-2 font-bold text-slate-700"><Globe class="h-4 w-4"/> ACRA (Singapore)</div>
                 <div class="flex items-center gap-2 font-bold text-slate-700"><Globe class="h-4 w-4"/> ASIC (Australia)</div>
-                <div class="flex items-center gap-2 font-bold text-slate-700"><Globe class="h-4 w-4"/> SOS (USA)</div>
+                <div class="flex items-center gap-2 font-bold text-slate-700"><Globe class="h-4 w-4"/> Companies House (UK)</div>
                 <div class="flex items-center gap-2 font-bold text-slate-700"><Search class="h-4 w-4"/> Social Reputation</div>
             </div>
         </div>
@@ -404,7 +418,7 @@
        </div>
     </section>
 
-   <section class="py-16 px-4 bg-white border-b border-slate-200">
+    <section class="py-16 px-4 bg-white border-b border-slate-200">
        <div class="max-w-4xl mx-auto">
           <h2 class="font-serif text-3xl font-bold text-center text-deep-justice mb-8">
              Latest from the Blog
@@ -515,7 +529,9 @@
                 <Check class="h-8 w-8 text-verdict-green" />
              </div>
              <h3 class="font-serif text-xl font-bold text-deep-justice mb-2">You're on the list!</h3>
-             <p class="text-slate-600 text-sm mb-6">We'll notify you when your first free scan is ready.</p>
+             <p class="text-slate-600 text-sm mb-6">
+                Your <strong>7 Free Scans</strong> will be credited to this email address when we launch.
+             </p>
              <Button
                 class="w-full bg-electric-blue hover:bg-blue-700"
                 onclick={() => showWaitlistModal = false}
@@ -531,9 +547,15 @@
              }}
              class="space-y-4 py-2"
           >
-             <p class="text-slate-600 text-sm mb-4">
-                Stop guessing. Start verifying. Enter your email to get <strong>1 Free Deep Scan</strong> when we launch.
-             </p>
+             <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
+                <p class="text-deep-justice text-sm font-semibold mb-1">
+                   🎁 Founder's Reward
+                </p>
+                <p class="text-slate-600 text-xs">
+                   Standard users get 5 free scans. <strong>Waitlist members get 7.</strong>
+                   <br>Enter your email to lock in your bonus credits.
+                </p>
+             </div>
 
              <input
                 type="text"
@@ -591,18 +613,13 @@
 </div>
 
 <style>
-    /* Custom Utility Classes for Brand Colors from TDS [cite: 170] */
     .text-electric-blue { color: #2563eb; }
     .bg-electric-blue { background-color: #2563eb; }
-
     .text-deep-justice { color: #0f172a; }
     .bg-deep-justice { background-color: #0f172a; }
-
     .text-verdict-green { color: #059669; }
     .bg-verdict-green { background-color: #059669; }
-
     .text-gavel-red { color: #DC2626; }
     .bg-gavel-red { background-color: #DC2626; }
-
-    .bg-caution-gold { background-color: #F59E0B; } /* Added for Warning level */
+    .bg-caution-gold { background-color: #F59E0B; }
 </style>
