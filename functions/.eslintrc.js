@@ -9,7 +9,8 @@ module.exports = {
     "plugin:import/errors",
     "plugin:import/warnings",
     "plugin:import/typescript",
-    "google",
+    "google", // <--- This forces the strict rules
+    "prettier",
     "plugin:@typescript-eslint/recommended",
   ],
   parser: "@typescript-eslint/parser",
@@ -17,17 +18,18 @@ module.exports = {
     project: ["tsconfig.json", "tsconfig.dev.json"],
     sourceType: "module",
   },
-  ignorePatterns: [
-    "/lib/**/*", // Ignore built files.
-    "/generated/**/*", // Ignore generated files.
-  ],
-  plugins: [
-    "@typescript-eslint",
-    "import",
-  ],
+  ignorePatterns: ["/lib/**/*", "/generated/**/*"],
+  plugins: ["@typescript-eslint", "import"],
   rules: {
-    "quotes": ["error", "double"],
+    quotes: ["error", "double"],
     "import/no-unresolved": 0,
-    "indent": ["error", 2],
+    indent: ["error", 2],
+
+    // --- ADD THESE LINES TO FIX YOUR ERRORS ---
+    "require-jsdoc": "off", // Stops asking for comments on every function
+    "valid-jsdoc": "off", // Stops validating comment formats
+    "max-len": "off", // Stops complaining about long lines
+    "object-curly-spacing": "off", // Fixes conflict with Prettier
+    // ------------------------------------------
   },
 };

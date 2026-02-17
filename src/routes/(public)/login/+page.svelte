@@ -13,11 +13,13 @@
 		signInWithMagicLink,
 		isEmailLink,
 		getStoredEmail,
-		clearStoredEmail
+		clearStoredEmail,
+		functions
 	} from "$lib/firebaseclient";
 	import { signInWithPopup } from "firebase/auth";
 	import { Mail, AlertCircle, Loader2, CheckCircle2 } from "lucide-svelte";
 	import { authStore, isAuthenticated } from "$lib/stores/auth";
+	import {httpsCallable} from "firebase/functions";
 
 	// States
 	type AuthState = "initial" | "sending" | "email-sent" | "signing-in" | "error";
@@ -27,12 +29,7 @@
 	let userEmail = $state<string>("");
 	let isGoogleLoading = $state(false);
 
-	// Redirect if already authenticated
-	$effect(() => {
-		if ($isAuthenticated && authState !== "signing-in") {
-			goto("/dashboard");
-		}
-	});
+
 
 	// Check for email link on mount
 	onMount(() => {
@@ -59,7 +56,7 @@
 				signInWithMagicLink(storedEmail, window.location.href)
 					.then(() => {
 						clearStoredEmail();
-						goto("/dashboard");
+						return finalizeLogin()
 					})
 					.catch((error: unknown) => {
 						const firebaseError = error as { code?: string; message?: string };
@@ -79,6 +76,60 @@
 		}
 	});
 
+	async function finalizeLogin() {
+   authState = "signing-in";
+
+   try {
+      // 1. Get or CREATE device ID
+      let deviceId = localStorage.getItem("device_id");
+
+      if (!deviceId) {
+         // Create new device ID
+         deviceId = crypto.randomUUID();
+         localStorage.setItem("device_id", deviceId);
+         console.log("🔍 [CLIENT] Created new Device ID:", deviceId);
+      } else {
+         console.log("🔍 [CLIENT] Existing Device ID:", deviceId);
+      }
+
+      const checkDevice = httpsCallable(functions, "checkDevice");
+      const result = await checkDevice({ deviceId });
+      const data = result.data as { status: string; deviceId?: string };
+
+      console.log("🔍 [CLIENT] Cloud Function Result:", data.status);
+
+      if (data.status === "trusted") {
+         // 2. Save deviceId if Cloud Function returned a new one
+         if (data.deviceId) {
+            localStorage.setItem("device_id", data.deviceId);
+            console.log("🔍 [CLIENT] Updated Device ID from server:", data.deviceId);
+         }
+
+         console.log("✅ [CLIENT] Device Trusted. Setting session...");
+
+         const idToken = await auth.currentUser?.getIdToken(true);
+         const response = await fetch("/api/session", {
+            method: "POST",
+            body: JSON.stringify({ idToken }),
+            headers: { "Content-Type": "application/json" }
+         });
+
+         console.log("🔍 [CLIENT] Session set:", response.status);
+
+         // Wait for cookie to be set before redirecting
+         setTimeout(() => {
+            console.log("🔍 [CLIENT] Redirecting to dashboard...");
+            window.location.assign("/dashboard");
+         }, 500);
+      } else {
+         console.log("❌ [CLIENT] Device Unknown. Redirecting to Verify...");
+         window.location.assign("/verify");
+      }
+   } catch (error) {
+      console.error("🔥 [CLIENT] Error:", error);
+   }
+}
+
 	async function handleGoogleSignIn() {
 		authState = "signing-in";
 		isGoogleLoading = true;
@@ -86,7 +137,7 @@
 
 		try {
 			await signInWithPopup(auth, googleProvider);
-			goto("/dashboard");
+			await finalizeLogin();
 		} catch (error: unknown) {
 			authState = "error";
 			const firebaseError = error as { code?: string; message?: string };
@@ -138,9 +189,9 @@
 		errorMessage = "";
 
 		signInWithMagicLink(userEmail, window.location.href)
-			.then(() => {
+			.then( async () => {
 				clearStoredEmail();
-				goto("/dashboard");
+				await finalizeLogin();
 			})
 			.catch((error: unknown) => {
 				const firebaseError = error as { code?: string; message?: string };
