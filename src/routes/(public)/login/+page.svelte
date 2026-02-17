@@ -7,19 +7,17 @@
 	import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "$lib/components/ui/card";
 
 	import {
-		auth,
-		googleProvider,
 		sendMagicLink,
 		signInWithMagicLink,
 		isEmailLink,
 		getStoredEmail,
 		clearStoredEmail,
-		functions
+		getAuthLazy,
+		getFunctionsLazy,
+		getGoogleProvider
 	} from "$lib/firebaseclient";
-	import { signInWithPopup } from "firebase/auth";
 	import { Mail, AlertCircle, Loader2, CheckCircle2 } from "lucide-svelte";
 	import { authStore, isAuthenticated } from "$lib/stores/auth";
-	import {httpsCallable} from "firebase/functions";
 
 	// States
 	type AuthState = "initial" | "sending" | "email-sent" | "signing-in" | "error";
@@ -32,7 +30,7 @@
 
 
 	// Check for email link on mount
-	onMount(() => {
+	onMount(async () => {
 		// Initialize auth store listener
 		authStore.init();
 
@@ -53,22 +51,21 @@
 				userEmail = storedEmail;
 				authState = "signing-in";
 
-				signInWithMagicLink(storedEmail, window.location.href)
-					.then(() => {
-						clearStoredEmail();
-						return finalizeLogin()
-					})
-					.catch((error: unknown) => {
-						const firebaseError = error as { code?: string; message?: string };
-						authState = "error";
-						if (firebaseError.code === "auth/expired-action-code") {
-							errorMessage = "The sign-in link has expired. Please request a new one.";
-						} else if (firebaseError.code === "auth/invalid-email") {
-							errorMessage = "The email address is invalid.";
-						} else {
-							errorMessage = firebaseError.message || "Failed to sign in. Please try again.";
-						}
-					});
+				try {
+					await signInWithMagicLink(storedEmail, window.location.href);
+					clearStoredEmail();
+					await finalizeLogin();
+				} catch (error: unknown) {
+					const firebaseError = error as { code?: string; message?: string };
+					authState = "error";
+					if (firebaseError.code === "auth/expired-action-code") {
+						errorMessage = "The sign-in link has expired. Please request a new one.";
+					} else if (firebaseError.code === "auth/invalid-email") {
+						errorMessage = "The email address is invalid.";
+					} else {
+						errorMessage = firebaseError.message || "Failed to sign in. Please try again.";
+					}
+				}
 			} else {
 				// Email missing from localStorage - user switched devices
 				authState = "initial";
@@ -77,58 +74,62 @@
 	});
 
 	async function finalizeLogin() {
-   authState = "signing-in";
+		authState = "signing-in";
 
-   try {
-      // 1. Get or CREATE device ID
-      let deviceId = localStorage.getItem("device_id");
+		try {
+			// 1. Get or CREATE device ID
+			let deviceId = localStorage.getItem("device_id");
 
-      if (!deviceId) {
-         // Create new device ID
-         deviceId = crypto.randomUUID();
-         localStorage.setItem("device_id", deviceId);
-         console.log("🔍 [CLIENT] Created new Device ID:", deviceId);
-      } else {
-         console.log("🔍 [CLIENT] Existing Device ID:", deviceId);
-      }
+			if (!deviceId) {
+				// Create new device ID
+				deviceId = crypto.randomUUID();
+				localStorage.setItem("device_id", deviceId);
+				console.log("🔍 [CLIENT] Created new Device ID:", deviceId);
+			} else {
+				console.log("🔍 [CLIENT] Existing Device ID:", deviceId);
+			}
 
-      const checkDevice = httpsCallable(functions, "checkDevice");
-      const result = await checkDevice({ deviceId });
-      const data = result.data as { status: string; deviceId?: string };
+			const functions = await getFunctionsLazy();
+			const { httpsCallable } = await import("firebase/functions");
+			const checkDevice = httpsCallable(functions, "checkDevice");
+			const result = await checkDevice({ deviceId });
+			const data = result.data as { status: string; deviceId?: string };
 
-      console.log("🔍 [CLIENT] Cloud Function Result:", data.status);
+			console.log("🔍 [CLIENT] Cloud Function Result:", data.status);
 
-      if (data.status === "trusted") {
-         // 2. Save deviceId if Cloud Function returned a new one
-         if (data.deviceId) {
-            localStorage.setItem("device_id", data.deviceId);
-            console.log("🔍 [CLIENT] Updated Device ID from server:", data.deviceId);
-         }
+			if (data.status === "trusted") {
+				// 2. Save deviceId if Cloud Function returned a new one
+				if (data.deviceId) {
+					localStorage.setItem("device_id", data.deviceId);
+					console.log("🔍 [CLIENT] Updated Device ID from server:", data.deviceId);
+				}
 
-         console.log("✅ [CLIENT] Device Trusted. Setting session...");
+				console.log("✅ [CLIENT] Device Trusted. Setting session...");
 
-         const idToken = await auth.currentUser?.getIdToken(true);
-         const response = await fetch("/api/session", {
-            method: "POST",
-            body: JSON.stringify({ idToken }),
-            headers: { "Content-Type": "application/json" }
-         });
+				const { getAuth } = await import("firebase/auth");
+				const auth = await getAuthLazy();
+				const idToken = await auth.currentUser?.getIdToken(true);
+				const response = await fetch("/api/session", {
+					method: "POST",
+					body: JSON.stringify({ idToken }),
+					headers: { "Content-Type": "application/json" }
+				});
 
-         console.log("🔍 [CLIENT] Session set:", response.status);
+				console.log("🔍 [CLIENT] Session set:", response.status);
 
-         // Wait for cookie to be set before redirecting
-         setTimeout(() => {
-            console.log("🔍 [CLIENT] Redirecting to dashboard...");
-            window.location.assign("/dashboard");
-         }, 500);
-      } else {
-         console.log("❌ [CLIENT] Device Unknown. Redirecting to Verify...");
-         window.location.assign("/verify");
-      }
-   } catch (error) {
-      console.error("🔥 [CLIENT] Error:", error);
-   }
-}
+				// Wait for cookie to be set before redirecting
+				setTimeout(() => {
+					console.log("🔍 [CLIENT] Redirecting to dashboard...");
+					window.location.assign("/dashboard");
+				}, 500);
+			} else {
+				console.log("❌ [CLIENT] Device Unknown. Redirecting to Verify...");
+				window.location.assign("/verify");
+			}
+		} catch (error) {
+			console.error("🔥 [CLIENT] Error:", error);
+		}
+	}
 
 	async function handleGoogleSignIn() {
 		authState = "signing-in";
@@ -136,7 +137,10 @@
 		errorMessage = "";
 
 		try {
-			await signInWithPopup(auth, googleProvider);
+			const { signInWithPopup } = await import("firebase/auth");
+			const auth = await getAuthLazy();
+			const provider = await getGoogleProvider();
+			await signInWithPopup(auth, provider);
 			await finalizeLogin();
 		} catch (error: unknown) {
 			authState = "error";
@@ -179,7 +183,7 @@
 		}
 	}
 
-	function handleManualEmailConfirm() {
+	async function handleManualEmailConfirm() {
 		if (!userEmail || !userEmail.includes("@")) {
 			errorMessage = "Please enter a valid email address.";
 			return;
@@ -188,22 +192,21 @@
 		authState = "signing-in";
 		errorMessage = "";
 
-		signInWithMagicLink(userEmail, window.location.href)
-			.then( async () => {
-				clearStoredEmail();
-				await finalizeLogin();
-			})
-			.catch((error: unknown) => {
-				const firebaseError = error as { code?: string; message?: string };
-				authState = "error";
-				if (firebaseError.code === "auth/expired-action-code") {
-					errorMessage = "The sign-in link has expired. Please request a new one.";
-				} else if (firebaseError.code === "auth/invalid-email") {
-					errorMessage = "The email address is invalid.";
-				} else {
-					errorMessage = firebaseError.message || "Failed to sign in. Please try again.";
-				}
-			});
+		try {
+			await signInWithMagicLink(userEmail, window.location.href);
+			clearStoredEmail();
+			await finalizeLogin();
+		} catch (error: unknown) {
+			const firebaseError = error as { code?: string; message?: string };
+			authState = "error";
+			if (firebaseError.code === "auth/expired-action-code") {
+				errorMessage = "The sign-in link has expired. Please request a new one.";
+			} else if (firebaseError.code === "auth/invalid-email") {
+				errorMessage = "The email address is invalid.";
+			} else {
+				errorMessage = firebaseError.message || "Failed to sign in. Please try again.";
+			}
+		}
 	}
 
 	function resetToInitial() {
@@ -222,12 +225,10 @@
 
 <svelte:head>
 	<title>Sign In | ContractChecker.net</title>
-	<meta name="description" content="Sign in to ContractChecker.net" />
 </svelte:head>
 
 <div class="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-8">
 	<div class="w-full max-w-md">
-		<!-- Logo / Brand -->
 		<div class="text-center mb-8">
 			<div class="inline-flex items-center justify-center gap-2 mb-2">
 				<img
@@ -430,3 +431,12 @@
 		</div>
 	</div>
 </div>
+
+<style>
+	.text-electric-blue {
+		color: #2563eb;
+	}
+	.text-deep-justice {
+		color: #0f172a;
+	}
+</style>

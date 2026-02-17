@@ -1,7 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { auth, functions } from "$lib/firebaseclient";
-    import { httpsCallable } from "firebase/functions";
+    import { getAuthLazy, getFunctionsLazy } from "$lib/firebaseclient";
     import { authStore, isAuthenticated, isInitialized } from "$lib/stores/auth";
 
     // UI Components
@@ -60,6 +59,7 @@
             localStorage.setItem("device_id", testDeviceId);
             successMessage = "TEST MODE: Device verified!";
 
+            const auth = await getAuthLazy();
             const idToken = await auth.currentUser?.getIdToken(true);
             await fetch("/api/session", {
                 method: "POST",
@@ -78,6 +78,8 @@
 
         try {
             console.log("📱 [VERIFY] Calling verifyDevice Cloud Function...", { otp, otpType: typeof otp });
+            const functions = await getFunctionsLazy();
+            const { httpsCallable } = await import("firebase/functions");
             const verifyDevice = httpsCallable(functions, "verifyDevice");
             const result = await verifyDevice({
                 otp: String(otp), // Ensure OTP is sent as string
@@ -95,6 +97,7 @@
                 successMessage = "Device verified! Logging you in...";
 
                 // Set the Session Cookie
+                const auth = await getAuthLazy();
                 const idToken = await auth.currentUser?.getIdToken(true);
                 console.log("📱 [VERIFY] Setting session cookie...");
 

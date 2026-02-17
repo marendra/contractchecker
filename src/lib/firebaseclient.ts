@@ -1,26 +1,5 @@
-import { initializeApp, getApps, type FirebaseOptions, getApps as getFirebaseApps } from "firebase/app";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithEmailLink,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInAnonymously,
-  signOut,
-} from "firebase/auth";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  serverTimestamp,
-  query,
-  where,
-  getDocs,
-} from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
-
 // Firebase configuration
-const firebaseConfig: FirebaseOptions = {
+const firebaseConfig = {
   apiKey: "AIzaSyDSSW8_6pIMc2YF7aC2Ie8K_FtdBfJ3Q3s",
   authDomain: "contractchecker-srv.firebaseapp.com",
   projectId: "contractchecker-srv",
@@ -32,50 +11,52 @@ const firebaseConfig: FirebaseOptions = {
 // Firestore database name
 const FIRESTORE_DB = "contract-checker";
 
-// Initialize Firebase - only once (lazy initialization for landing page speed)
-let _app: ReturnType<typeof initializeApp> | null = null;
-let _auth: ReturnType<typeof getAuth> | null = null;
-let _db: ReturnType<typeof getFirestore> | null = null;
-let _functions: ReturnType<typeof getFunctions> | null = null;
-let _initialized = false;
+// Email magic link configuration
+export const EMAIL_LINK_ACTION = "signin";
 
-function getLazyApp() {
-  if (!_app) {
-    _app = getFirebaseApps().length === 0 ? initializeApp(firebaseConfig) : getFirebaseApps()[0];
+// Dynamically import Firebase SDKs only when needed
+let _firebaseApp: any = null;
+let _auth: any = null;
+let _db: any = null;
+let _functions: any = null;
+
+async function getFirebaseApp() {
+  if (!_firebaseApp) {
+    const { initializeApp, getApps } = await import("firebase/app");
+    _firebaseApp =
+      getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
   }
-  return _app;
+  return _firebaseApp;
 }
 
-export function getLazyAuth() {
+export async function getAuthLazy() {
   if (!_auth) {
-    _auth = getAuth(getLazyApp());
+    const { getAuth } = await import("firebase/auth");
+    _auth = getAuth(await getFirebaseApp());
   }
   return _auth;
 }
 
-export function getLazyDb() {
+export async function getDbLazy() {
   if (!_db) {
-    _db = getFirestore(getLazyApp(), FIRESTORE_DB);
+    const { getFirestore } = await import("firebase/firestore");
+    _db = getFirestore(await getFirebaseApp(), FIRESTORE_DB);
   }
   return _db;
 }
 
-export function getLazyFunctions() {
+export async function getFunctionsLazy() {
   if (!_functions) {
-    _functions = getFunctions(getLazyApp());
+    const { getFunctions } = await import("firebase/functions");
+    _functions = getFunctions(await getFirebaseApp());
   }
   return _functions;
 }
 
-export const auth = getLazyAuth();
-export const db = getLazyDb();
-export const googleProvider = new GoogleAuthProvider();
-export const functions = getLazyFunctions();
-
-// Email magic link configuration
-export const EMAIL_LINK_ACTION = "signin";
-
+// Auth functions that work with lazy loading
 export async function sendMagicLink(email: string): Promise<void> {
+  const { sendSignInLinkToEmail } = await import("firebase/auth");
+  const auth = await getAuthLazy();
   const url = `${window.location.origin}/login`;
   await sendSignInLinkToEmail(auth, email, {
     url,
@@ -90,6 +71,8 @@ export async function signInWithMagicLink(
   email: string,
   emailLink: string,
 ): Promise<void> {
+  const { signInWithEmailLink } = await import("firebase/auth");
+  const auth = await getAuthLazy();
   await signInWithEmailLink(auth, email, emailLink);
   if (typeof window !== "undefined") {
     localStorage.removeItem("magicLinkEmail");
@@ -98,7 +81,9 @@ export async function signInWithMagicLink(
 
 export function isEmailLink(): boolean {
   if (typeof window === "undefined") return false;
-  return isSignInWithEmailLink(auth, window.location.href);
+  // Firebase email magic links contain "mode=signIn" in the URL
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get("mode") === "signin" || urlParams.get("oobCode") !== null;
 }
 
 export function getStoredEmail(): string | null {
@@ -111,16 +96,35 @@ export function clearStoredEmail(): void {
   localStorage.removeItem("magicLinkEmail");
 }
 
+export async function signOutLazy(): Promise<void> {
+  const { signOut } = await import("firebase/auth");
+  const auth = await getAuthLazy();
+  await signOut(auth);
+}
+
+// Google Provider
+export function getGoogleProvider() {
+  return (async () => {
+    const { GoogleAuthProvider } = await import("firebase/auth");
+    return new GoogleAuthProvider();
+  })();
+}
+
 // Waitlist functions - uses Cloud Function for landing page (no anonymous auth needed)
 export async function joinWaitlist(
   email: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Use Cloud Function directly (no Firebase auth needed on landing page)
-    const addToWaitlist = httpsCallable(getLazyFunctions(), "addToWaitlist");
+    const { httpsCallable } = await import("firebase/functions");
+    const functions = await getFunctionsLazy();
+    const addToWaitlist = httpsCallable(functions, "addToWaitlist");
     const result = await addToWaitlist({ email });
 
-    const data = result.data as { success: boolean; message?: string; error?: string };
+    const data = result.data as {
+      success: boolean;
+      message?: string;
+      error?: string;
+    };
 
     if (data.success) {
       return { success: true };
@@ -135,3 +139,21 @@ export async function joinWaitlist(
     };
   }
 }
+
+// Note: Firebase SDKs are now lazy-loaded via getAuthLazy(), getDbLazy(), getFunctionsLazy()
+// The legacy exports below are kept for backward compatibility but use lazy loading internally
+export const auth = {
+  get current() {
+    return getAuthLazy();
+  },
+};
+export const db = {
+  get current() {
+    return getDbLazy();
+  },
+};
+export const functions = {
+  get current() {
+    return getFunctionsLazy();
+  },
+};

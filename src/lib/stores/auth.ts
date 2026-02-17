@@ -1,7 +1,5 @@
 import { writable, derived, type Readable } from "svelte/store";
-import type { User } from "firebase/auth";
-import { auth } from "$lib/firebaseclient";
-import { onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
+import { getAuthLazy } from "$lib/firebaseclient";
 
 export interface AuthUser {
 	uid: string;
@@ -24,37 +22,57 @@ const createAuthStore = () => {
 		initialized: false
 	});
 
-	// Initialize auth state listener
-	const init = () => {
+	// Initialize auth state listener (lazy)
+	let initialized = false;
+	const init = async () => {
 		if (typeof window === "undefined") return;
+		if (initialized) return;
+		initialized = true;
 
-		onAuthStateChanged(auth, (firebaseUser) => {
-			if (firebaseUser) {
-				set({
-					user: {
-						uid: firebaseUser.uid,
-						email: firebaseUser.email,
-						displayName: firebaseUser.displayName,
-						photoURL: firebaseUser.photoURL,
-						emailVerified: firebaseUser.emailVerified,
-						isAnonymous: firebaseUser.isAnonymous
-					},
-					loading: false,
-					initialized: true
-				});
-			} else {
-				set({
-					user: null,
-					loading: false,
-					initialized: true
-				});
-			}
-		});
+		try {
+			const { onAuthStateChanged } = await import("firebase/auth");
+			const auth = await getAuthLazy();
+			onAuthStateChanged(auth, (firebaseUser: any) => {
+				if (firebaseUser) {
+					set({
+						user: {
+							uid: firebaseUser.uid,
+							email: firebaseUser.email,
+							displayName: firebaseUser.displayName,
+							photoURL: firebaseUser.photoURL,
+							emailVerified: firebaseUser.emailVerified,
+							isAnonymous: firebaseUser.isAnonymous
+						},
+						loading: false,
+						initialized: true
+					});
+				} else {
+					set({
+						user: null,
+						loading: false,
+						initialized: true
+					});
+				}
+			});
+		} catch (error) {
+			console.error("Auth init error:", error);
+			set({
+				user: null,
+				loading: false,
+				initialized: true
+			});
+		}
 	};
 
 	// Sign out
 	const signOut = async () => {
-		await firebaseSignOut(auth);
+		try {
+			const { signOut } = await import("firebase/auth");
+			const auth = await getAuthLazy();
+			await signOut(auth);
+		} catch (error) {
+			console.error("Sign out error:", error);
+		}
 		set({
 			user: null,
 			loading: false,
