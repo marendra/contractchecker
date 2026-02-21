@@ -35,7 +35,7 @@
        {
           icon: Search,
           title: "2. The 'Ghostbuster' Check",
-          description: "We don't just read the file. We search government databases (US, UK, AU, SG) to see if this client actually exists."
+          description: "We don't just read the file. We search government databases (US, UK, CA, AU, EU) to see if this client actually exists."
        },
        {
           icon: Shield,
@@ -56,7 +56,7 @@
        newWay: {
           title: "ContractChecker.net",
           icon: Shield,
-          price: "$5 - $9 / Scan",
+          price: "$5 / Scan",
           speed: "30 Seconds",
           scope: "Checks text + Validates Company Identity.",
           mood: "blue"
@@ -72,11 +72,11 @@
     const faqs = [
        {
           question: "Is this a replacement for a real lawyer?",
-          answer: "No. ContractChecker is an AI-powered 'Bodyguard'. We specialize in catching 90% of scams (fake companies, identity theft) and standard bad clauses (hidden fees). For complex M&A deals, use a lawyer. For gig contracts, use us."
+          answer: "No. ContractChecker is an AI-powered 'Bodyguard'. We specialize in catching 90% of scams (fake companies, identity theft) and standard bad clauses (hidden fees). For complex deals, use a lawyer. For gig contracts, use us."
        },
        {
           question: "How do you check if a client is real?",
-          answer: "We use a 'Split-Brain' AI. While one AI reads your contract, another AI (Perplexity-powered) searches live government databases (like Secretary of State in US or ACRA in Singapore) and social media to verify the client's reputation."
+          answer: "We use a 'Split-Brain' AI. While one AI reads your contract, another AI (Perplexity-powered) searches live government databases (like the Secretary of State in the US or Corporations Canada) and social media to verify the client's reputation."
        },
        {
           question: "Is my contract kept private?",
@@ -84,11 +84,11 @@
        },
        {
           question: "What file types do you support?",
-          answer: "Currently, we support PDF documents. Simply upload your contract file, and our DeepSeek OCR engine will read the layout directly."
+          answer: "Currently, we support PDF documents (Maximum size: 20 MB). Simply upload your contract file, and our DeepSeek OCR engine will read the layout directly."
        },
        {
           question: "How does the pricing work?",
-          answer: "It's a Pay-Per-Use model. Your first scan is free (Email required). Verify your phone to unlock your full Founder's Bundle (7 scans). Bulk packs start at $5/scan."
+          answer: "It's a Pay-Per-Use model. During our Soft-Launch, scans are discounted to $5 each (Regular price: $9). The first 50 people to join our VIP Beta get 3 scans absolutely free."
        }
     ];
 
@@ -185,7 +185,7 @@
           <span class="flex-1 text-center flex items-center justify-center gap-2">
              <Clock class="h-4 w-4" />
              <span>
-                <strong>Offer Ending:</strong> The "7 Free Scans" bonus ends on <strong>May 1st</strong> or for the first <strong>1,000 Users</strong>.
+                <strong>VIP Beta:</strong> The first 50 users get <strong>3 Free Scans</strong> ($27 value). Registration closes soon.
              </span>
           </span>
           <button onclick={() => showBanner = false} class="ml-4 hover:text-slate-200 transition-colors">
@@ -209,7 +209,7 @@
                    FAQ
                 </a>
                 <Button class="bg-electric-blue hover:bg-blue-700" onclick={openWaitlistModal}>
-                   Get Early Access
+                   Join VIP Waitlist
                 </Button>
              </div>
           </div>
@@ -233,13 +233,13 @@
 
           <p class="text-xl text-slate-600 mb-6 max-w-2xl mx-auto leading-relaxed">
              The only AI that reviews the <strong class="text-deep-justice">contract terms</strong> AND background checks the <strong class="text-deep-justice">client's reputation</strong>.
-             <br><span class="text-electric-blue font-semibold">Join the waitlist to claim 7 Free Credits ($63 Value).</span>
+             <br><span class="text-electric-blue font-semibold">Join the VIP Beta to claim 3 Free Credits ($27 Value).</span>
           </p>
 
           <div class="mb-8">
               <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-50 text-gavel-red text-xs font-bold border border-red-100">
-                  <Clock class="h-3 w-3" />
-                  Offer reduced to 1 Free Scan after May 1st, 2026.
+                  <Users class="h-3 w-3" />
+                  Strictly limited to the first 50 signups.
               </span>
           </div>
 
@@ -248,13 +248,13 @@
                 class="bg-electric-blue hover:bg-blue-700 text-lg px-8 py-6 h-auto shadow-lg shadow-blue-500/20"
                 onclick={openWaitlistModal}
              >
-                Start Free Scan
+                Secure My Free Scans
                 <ArrowRight class="ml-2 h-5 w-5" />
              </Button>
           </div>
 
           <p class="mt-4 text-sm text-slate-500">
-             No credit card required. No subscription.
+             No credit card required to join the waitlist.
           </p>
        </div>
     </section>
@@ -266,7 +266,7 @@
             </p>
             <div class="flex flex-wrap justify-center items-center gap-8 md:gap-12 opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
                 <div class="flex items-center gap-2 font-bold text-slate-700"><Globe class="h-4 w-4"/> SOS (USA)</div>
-                <div class="flex items-center gap-2 font-bold text-slate-700"><Globe class="h-4 w-4"/> ACRA (Singapore)</div>
+                <div class="flex items-center gap-2 font-bold text-slate-700"><Globe class="h-4 w-4"/> Corporations Canada</div>
                 <div class="flex items-center gap-2 font-bold text-slate-700"><Globe class="h-4 w-4"/> ASIC (Australia)</div>
                 <div class="flex items-center gap-2 font-bold text-slate-700"><Globe class="h-4 w-4"/> Companies House (UK)</div>
                 <div class="flex items-center gap-2 font-bold text-slate-700"><Search class="h-4 w-4"/> Social Reputation</div>
@@ -310,7 +310,7 @@
 
              <Card class="border-2 border-electric-blue shadow-xl relative overflow-hidden">
                 <div class="absolute top-0 right-0 bg-electric-blue text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
-                    RECOMMENDED
+                    SOFT-LAUNCH PROMO
                 </div>
                 <CardHeader class="text-center pb-2 bg-electric-blue/5">
                    <div
@@ -325,7 +325,10 @@
                 <CardContent class="space-y-4">
                    <div class="flex items-center justify-between py-2 border-b border-blue-100">
                       <span class="text-slate-500">Price</span>
-                      <span class="font-bold text-electric-blue text-lg">{lawyerComparison.newWay.price}</span>
+                      <div class="text-right flex items-center gap-2 justify-end">
+                          <span class="text-sm text-slate-400 line-through">$9</span>
+                          <span class="font-bold text-electric-blue text-lg">{lawyerComparison.newWay.price}</span>
+                      </div>
                    </div>
                    <div class="flex items-center justify-between py-2 border-b border-blue-100">
                       <span class="text-slate-500">Scope</span>
@@ -358,16 +361,11 @@
           <div class="grid md:grid-cols-3 gap-8">
              {#each features as feature, i}
                 <div class="relative text-center group">
-                   <div
-                      class="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-electric-blue text-white font-bold flex items-center justify-center text-sm z-10 shadow-md"
-                   >
+                   <div class="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-electric-blue text-white font-bold flex items-center justify-center text-sm z-10 shadow-md">
                       {i + 1}
                    </div>
-
                    <Card class="pt-10 pb-6 h-full transition-transform hover:-translate-y-1 duration-300">
-                      <div
-                         class="mx-auto mb-4 w-14 h-14 rounded-full bg-electric-blue/10 flex items-center justify-center group-hover:bg-electric-blue/20 transition-colors"
-                      >
+                      <div class="mx-auto mb-4 w-14 h-14 rounded-full bg-electric-blue/10 flex items-center justify-center group-hover:bg-electric-blue/20 transition-colors">
                          <feature.icon class="h-7 w-7 text-electric-blue" />
                       </div>
                       <CardHeader class="pb-2">
@@ -379,7 +377,6 @@
                          <p class="text-slate-600 text-sm">{feature.description}</p>
                       </CardContent>
                    </Card>
-
                    {#if i < features.length - 1}
                       <div class="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2 z-10 text-slate-300">
                          <ArrowRight class="h-6 w-6" />
@@ -402,9 +399,7 @@
 
           <div class="flex flex-wrap justify-center gap-4">
              {#each riskLevels as risk}
-                <div
-                   class="flex items-center gap-3 px-6 py-4 rounded-lg bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
-                >
+                <div class="flex items-center gap-3 px-6 py-4 rounded-lg bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                    <div class="{risk.color} w-4 h-4 rounded-full shrink-0 animate-pulse"></div>
                    <div class="text-left">
                       <p class="font-bold text-deep-justice text-sm">{risk.level}</p>
@@ -420,7 +415,7 @@
                   <div>
                     <h4 class="font-bold text-deep-justice text-sm mb-1">Real Example Caught:</h4>
                     <p class="text-sm text-slate-600 italic">
-                        "The contract looked perfect, but ContractChecker found the 'CEO' was a stock photo and the business address was a vacant lot in Bekasi. Saved me 2 months of work."
+                        "The contract looked perfect, but ContractChecker found the 'CEO' was a stock photo and the business address was a vacant lot. Saved me 2 months of work."
                     </p>
                   </div>
               </div>
@@ -434,7 +429,7 @@
              Latest from the Blog
           </h2>
           <div class="grid md:grid-cols-2 gap-8 items-center">
-             <img src="https://storage.contractchecker.net/blog-freelance.webp" alt="Blog Thumbnail" class="rounded-lg shadow-md  hover:rotate-0 transition-transform duration-300" />
+             <img src="https://storage.contractchecker.net/blog-freelance.webp" alt="Blog Thumbnail" class="rounded-lg shadow-md hover:rotate-0 transition-transform duration-300" />
              <div>
                 <span class="text-electric-blue font-bold text-sm uppercase tracking-wider">Must Read</span>
                 <h3 class="font-serif text-2xl font-bold text-deep-justice mt-2 mb-4">
@@ -482,10 +477,10 @@
 
        <div class="max-w-3xl mx-auto text-center relative z-10">
           <h2 class="font-serif text-3xl md:text-4xl font-bold text-white mb-4">
-             Ready to verify your next client?
+             Don't miss the VIP Beta.
           </h2>
           <p class="text-lg text-slate-300 mb-8">
-             Join thousands of freelancers who use ContractChecker to protect their income.
+             Only 50 spots available for the free tier. Secure yours before we launch.
           </p>
 
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
@@ -538,9 +533,9 @@
              <div class="mx-auto w-16 h-16 rounded-full bg-verdict-green/10 flex items-center justify-center mb-4">
                 <Check class="h-8 w-8 text-verdict-green" />
              </div>
-             <h3 class="font-serif text-xl font-bold text-deep-justice mb-2">You're on the list!</h3>
+             <h3 class="font-serif text-xl font-bold text-deep-justice mb-2">You're on the VIP list!</h3>
              <p class="text-slate-600 text-sm mb-6">
-                Your <strong>7 Free Scans</strong> will be credited to this email address when we launch.
+                Your <strong>3 Free Scans</strong> are secured. We will email you when the Soft-Launch begins.
              </p>
              <Button
                 class="w-full bg-electric-blue hover:bg-blue-700"
@@ -561,15 +556,15 @@
                 <div class="flex justify-between items-start">
                     <div>
                         <p class="text-deep-justice text-sm font-semibold mb-1">
-                        🎁 Founder's Reward
+                        🎁 VIP Beta Reward
                         </p>
                         <p class="text-slate-600 text-xs leading-relaxed">
-                        Waitlist members get <strong>7 Free Scans</strong> .
-                        <br>Offer drops to <strong>1 Scan</strong> after <span class="font-bold text-gavel-red">May 1st, 2026</span>.
+                        The first 50 members get <strong>3 Free Scans</strong>.
+                        <br>Once filled, the app is 100% paid ($5 promo, then $9).
                         </p>
                     </div>
                     <Badge variant="outline" class="bg-white text-xs border-blue-200 text-blue-700 whitespace-nowrap">
-                        <Clock class="w-3 h-3 mr-1" /> Limited
+                        <Clock class="w-3 h-3 mr-1" /> 50 Spots Only
                     </Badge>
                 </div>
              </div>
@@ -584,10 +579,10 @@
              />
 
              {#if waitlistError}
-                <div class="p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm flex gap-2 items-center">
-                   <AlertTriangle class="h-4 w-4" />
-                   {waitlistError}
-                </div>
+                 <div class="p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm flex gap-2 items-center">
+                    <AlertTriangle class="h-4 w-4" />
+                    {waitlistError}
+                 </div>
              {/if}
 
              <div class="space-y-2">
@@ -617,7 +612,7 @@
                    <Loader2 class="mr-2 h-5 w-5 animate-spin" />
                    Securing Spot...
                 {:else}
-                   Join Waitlist
+                   Lock in My 3 Free Scans
                 {/if}
              </Button>
 

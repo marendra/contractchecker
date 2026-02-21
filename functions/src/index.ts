@@ -1,11 +1,36 @@
+/**
+ * ContractChecker.net - Firebase Functions v2
+ * Includes: Waitlist, OTP Device Auth, and R2 Secure Uploads
+ */
+
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
-import { Resend } from "resend";
 import { onCall, HttpsError, CallableRequest } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params"; // New import for Secrets
+import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
+import { Resend } from "resend";
 
+// --- NEW IMPORTS FOR R2 ---
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { v4 as uuidv4 } from "uuid";
+
+// Initialize Admin
 admin.initializeApp();
 const db = getFirestore("contract-checker");
+
+// --- DEFINE SECRETS ---
+// These allow us to access the keys securely via .value() inside the function
+const r2AccessKeyId = defineSecret("R2_ACCESS_KEY_ID");
+const r2SecretAccessKey = defineSecret("R2_SECRET_ACCESS_KEY");
+const r2Endpoint = defineSecret("R2_ENDPOINT");
+const r2BucketName = defineSecret("R2_BUCKET_NAME");
+// We keep your existing RESEND_API_KEY string reference for compatibility with your existing functions
+
+// ==========================================
+// 1. WAITLIST LOGIC
+// ==========================================
 
 interface AddToWaitlistData {
   email: string;
@@ -17,29 +42,21 @@ interface AddToWaitlistResponse {
   error?: string;
 }
 
-// New function: Direct waitlist submission without Firebase Auth
 export const addToWaitlist = onCall(
   { region: "us-central1" },
   async (request: CallableRequest<AddToWaitlistData>): Promise<AddToWaitlistResponse> => {
-    // Validate origin from the request
-    // In callable functions, we can't easily access headers, but we can validate via X-Forwarded-Host or similar
-    // For now, we'll skip origin validation since callable functions handle CORS automatically
-    // The actual protection is in Firestore rules (no write without auth, but admin has access)
-
     const email = request.data.email?.toLowerCase().trim();
 
     if (!email) {
       return { success: false, error: "Email is required" };
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return { success: false, error: "Invalid email format" };
     }
 
     try {
-      // Check if email already exists
       const waitlistQuery = db.collection("waitlist").where("email", "==", email);
       const snapshot = await waitlistQuery.get();
 
@@ -48,7 +65,6 @@ export const addToWaitlist = onCall(
         return { success: true, message: "Already on waitlist" };
       }
 
-      // Add to waitlist
       await db.collection("waitlist").add({
         email,
         timestamp: Date.now(),
@@ -65,25 +81,15 @@ export const addToWaitlist = onCall(
   }
 );
 
-interface CheckDeviceData {
-  deviceId?: string;
-}
-
-interface CheckDeviceResponse {
-  status: "trusted" | "otp_sent";
-}
-
-// 1. Move initialization INSIDE the function or leave it as is,
-// but it MUST be bound to the function below.
 export const sendWaitlistWelcome = onDocumentCreated(
   {
     document: "waitlist/{docId}",
     database: "contract-checker",
     region: "us-central1",
-    secrets: ["RESEND_API_KEY"], // <--- ADD THIS LINE
+    secrets: ["RESEND_API_KEY"],
   },
   async (event) => {
-    // 2. Initialize it here inside the handler to ensure the secret is ready
+    // Note: Using process.env here as per your original code
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     const snapshot = event.data;
@@ -124,6 +130,18 @@ export const sendWaitlistWelcome = onDocumentCreated(
   }
 );
 
+// ==========================================
+// 2. DEVICE AUTH & OTP LOGIC
+// ==========================================
+
+interface CheckDeviceData {
+  deviceId?: string;
+}
+
+interface CheckDeviceResponse {
+  status: "trusted" | "otp_sent";
+}
+
 export const checkDevice = onCall<CheckDeviceData>(
   { cors: true, region: "us-central1", secrets: ["RESEND_API_KEY"] },
   async (request: CallableRequest<CheckDeviceData>): Promise<CheckDeviceResponse> => {
@@ -138,7 +156,6 @@ export const checkDevice = onCall<CheckDeviceData>(
     if (deviceId) {
       const deviceDoc = await db.doc(`users/${uid}/devices/${deviceId}`).get();
       if (deviceDoc.exists) {
-        // Update lastUsed timestamp for trusted device
         await db.doc(`users/${uid}/devices/${deviceId}`).update({
           lastUsed: Date.now(),
         });
@@ -191,7 +208,6 @@ export const verifyDevice = onCall<VerifyDeviceData>(
     const uid = request.auth.uid;
     const otp = String(request.data.otp);
 
-    // Get the OTP record
     const otpDoc = await db.collection("otp_codes").doc(uid).get();
 
     if (!otpDoc.exists) {
@@ -204,23 +220,16 @@ export const verifyDevice = onCall<VerifyDeviceData>(
       return { status: "invalid" };
     }
 
-    // Check if OTP is expired
     if (Date.now() > otpData.expiresAt) {
       console.log(`[verifyDevice] OTP expired for uid: ${uid}`);
-      // Clean up expired OTP
       await db.collection("otp_codes").doc(uid).delete();
       return { status: "expired" };
     }
 
-    // Verify the OTP code - compare as strings
     if (otpData.code !== otp) {
-      console.log(
-        `[verifyDevice] Invalid OTP for uid: ${uid}. Expected: ${otpData.code}, Got: ${otp}`
-      );
       return { status: "invalid" };
     }
 
-    // OTP is valid! Create a new device entry
     const newDeviceId = `device_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
     await db.doc(`users/${uid}/devices/${newDeviceId}`).set({
@@ -229,22 +238,97 @@ export const verifyDevice = onCall<VerifyDeviceData>(
       lastUsed: Date.now(),
     });
 
-    // Clean up the used OTP
     await db.collection("otp_codes").doc(uid).delete();
 
-    console.log(
-      `[verifyDevice] Device verified successfully for uid: ${uid}, newDeviceId: ${newDeviceId}`
-    );
     return { status: "success", newDeviceId };
   }
 );
 
-/**
- * Generates the HTML email template for the OTP code.
- *
- * @param {string} code - The 6-digit OTP code to display.
- * @return {string} The complete HTML string for the email.
- */
+// ==========================================
+// 3. R2 SECURE UPLOAD LOGIC (NEW)
+// ==========================================
+
+interface GenerateUploadUrlRequest {
+  filename: string;
+  contentType: string;
+}
+
+interface GenerateUploadUrlResponse {
+  uploadUrl: string;
+  destinationPath: string;
+}
+
+export const generateUploadUrl = onCall<GenerateUploadUrlRequest>(
+  {
+    region: "us-central1", // Kept consistent with your other functions
+    // We bind the R2 secrets here so we can use them
+    secrets: [r2AccessKeyId, r2SecretAccessKey, r2Endpoint, r2BucketName],
+  },
+  async (
+    request: CallableRequest<GenerateUploadUrlRequest>
+  ): Promise<GenerateUploadUrlResponse> => {
+    // 1. Auth Check
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "You must be logged in to upload files.");
+    }
+
+    const { filename, contentType } = request.data;
+
+    // 2. Validation
+    if (!filename || !contentType) {
+      throw new HttpsError("invalid-argument", "Filename and Content-Type are required.");
+    }
+    if (contentType !== "application/pdf") {
+      throw new HttpsError("invalid-argument", "Only PDF files are allowed.");
+    }
+
+    const userId = request.auth.uid;
+    const uniqueFileId = uuidv4();
+
+    // 3. Path Construction: contracts/{userId}/{uuid}/{filename}
+    // This strict pathing ensures User A cannot overwrite User B's files
+    const destinationPath = `contracts/${userId}/${uniqueFileId}/${filename}`;
+
+    try {
+      // 4. Initialize S3 Client with Secrets
+      const client = new S3Client({
+        region: "auto",
+        endpoint: r2Endpoint.value(),
+        credentials: {
+          accessKeyId: r2AccessKeyId.value(),
+          secretAccessKey: r2SecretAccessKey.value(),
+        },
+      });
+
+      // 5. Generate Signed URL
+      const command = new PutObjectCommand({
+        Bucket: r2BucketName.value(),
+        Key: destinationPath,
+        ContentType: contentType,
+        Metadata: {
+          "owner-uid": userId, // Tag object with owner in R2
+        },
+      });
+
+      // URL valid for 5 minutes (300 seconds)
+      const signedUrl = await getSignedUrl(client, command, { expiresIn: 300 });
+
+      logger.info(`Generated upload URL for user ${userId}: ${destinationPath}`);
+
+      return {
+        uploadUrl: signedUrl,
+        destinationPath: destinationPath,
+      };
+    } catch (error) {
+      logger.error("Error generating signed URL", error);
+      throw new HttpsError("internal", "Unable to generate upload URL.");
+    }
+  }
+);
+
+// ==========================================
+// 4. HELPERS
+// ==========================================
 
 function getOtpEmailHtml(code: string): string {
   return `
