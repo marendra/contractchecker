@@ -3,8 +3,9 @@
  * Includes: Waitlist, OTP Device Auth, and R2 Secure Uploads
  */
 
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { onCall, HttpsError, CallableRequest } from "firebase-functions/v2/https";
+import { CloudTasksClient } from "@google-cloud/tasks";
 import { defineSecret } from "firebase-functions/params"; // New import for Secrets
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
@@ -19,6 +20,7 @@ import { v4 as uuidv4 } from "uuid";
 // Initialize Admin
 admin.initializeApp();
 const db = getFirestore("contract-checker");
+const tasksClient = new CloudTasksClient();
 
 // --- DEFINE SECRETS ---
 // These allow us to access the keys securely via .value() inside the function
@@ -41,6 +43,147 @@ interface AddToWaitlistResponse {
   message?: string;
   error?: string;
 }
+
+export const contractOrchestrator = onDocumentUpdated(
+  {
+    // Listening to the specific user's sub-collection
+    document: "users/{userId}/contracts/{contractId}",
+    database: "contract-checker",
+    region: "us-central1",
+    // These must be set via: firebase functions:secrets:set <NAME>
+    secrets: ["CLOUD_RUN_URL", "SERVICE_ACCOUNT_EMAIL"],
+  },
+  async (event) => {
+    const beforeData = event.data?.before.data();
+    const afterData = event.data?.after.data();
+
+    // Exit if document was deleted or data is missing
+    if (!beforeData || !afterData) return;
+
+    const currentStatus = afterData.status;
+    const previousStatus = beforeData.status;
+
+    // GUARD: Only trigger if the status field actually changed
+    if (currentStatus === previousStatus) {
+      return;
+    }
+
+    const userId = event.params.userId;
+    const contractId = event.params.contractId;
+
+    logger.info(
+      `[Orchestrator] Status transition for [${contractId}]: ${previousStatus} -> ${currentStatus}`
+    );
+
+    // Cloud Tasks Configuration
+    const project =
+      process.env.GCLOUD_PROJECT || process.env.FIREBASE_CONFIG
+        ? JSON.parse(process.env.FIREBASE_CONFIG as string).projectId
+        : "";
+    const location = "us-central1";
+
+    // Using the exact queue you already created in GCP
+    const queue = "ai-investigation-queue";
+
+    const queuePath = tasksClient.queuePath(project, location, queue);
+    const cloudRunUrl = process.env.CLOUD_RUN_URL;
+
+    // Security: The ID badge that lets Tasks invoke your secure Cloud Run service
+    const oidcToken = {
+      serviceAccountEmail: process.env.SERVICE_ACCOUNT_EMAIL,
+    };
+
+    let targetEndpoint = "";
+    let payload = {};
+
+    // ---------------------------------------------------------
+    // THE STATE MACHINE (Routing to the correct Python worker)
+    // ---------------------------------------------------------
+    switch (currentStatus) {
+    case "queued":
+      // Trigger: File successfully uploaded to Cloudflare R2
+      targetEndpoint = `${cloudRunUrl}/workers/run-ocr`;
+      payload = {
+        userId: userId,
+        contractId: contractId,
+        r2Path: afterData.r2_path,
+      };
+      logger.info(`[Orchestrator] Queuing OCR Task for [${contractId}]`);
+      break;
+
+    case "investigating":
+      // Trigger: User confirmed the extracted entity name in SvelteKit
+      targetEndpoint = `${cloudRunUrl}/workers/run-perplexity`;
+      payload = {
+        userId: userId,
+        contractId: contractId,
+        // Fallback to auto-extracted info if manual verification data is missing
+        entityName:
+            afterData.user_verification?.entityName || afterData.extracted_client_info?.entityName,
+        countryCode:
+            afterData.user_verification?.countryCode ||
+            afterData.extracted_client_info?.countryCode,
+      };
+      logger.info(`[Orchestrator] Queuing Investigation Task for [${contractId}]`);
+      break;
+
+    case "auditing":
+      // Trigger: Perplexity finished its background check
+      targetEndpoint = `${cloudRunUrl}/workers/run-audit`;
+      payload = {
+        userId: userId,
+        contractId: contractId,
+        ocrText: afterData.ocr_result,
+        investigationReport: afterData.due_diligence_report,
+      };
+      logger.info(`[Orchestrator] Queuing Final Audit Task for [${contractId}]`);
+      break;
+
+    case "completed":
+      logger.info(`[Orchestrator] 🎉 Contract [${contractId}] is fully processed!`);
+      return;
+
+    case "error":
+      logger.error(`[Orchestrator] 🚨 Error on contract [${contractId}]: ${afterData.error_msg}`);
+      return;
+
+    default:
+      // Ignore intermediary statuses like 'processing_ocr' or 'awaiting_confirmation'
+      logger.debug(
+        `[Orchestrator] Ignoring transient status: ${currentStatus} for [${contractId}]`
+      );
+      return;
+    }
+
+    // ---------------------------------------------------------
+    // EXECUTION: Dispatching the Task
+    // ---------------------------------------------------------
+    try {
+      const task = {
+        httpRequest: {
+          httpMethod: "POST" as const,
+          url: targetEndpoint,
+          oidcToken: oidcToken,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: Buffer.from(JSON.stringify(payload)).toString("base64"),
+        },
+      };
+
+      await tasksClient.createTask({ parent: queuePath, task });
+      logger.info(`[Orchestrator] Successfully dispatched task to ${targetEndpoint}`);
+    } catch (error) {
+      logger.error(`[Orchestrator] FAILED to dispatch task for [${contractId}]`, error);
+
+      // Fallback: Notify SvelteKit UI that the orchestration failed
+      await event.data?.after.ref.update({
+        status: "error",
+        error_msg: "Orchestrator failed to trigger the AI worker. Please try again.",
+      });
+    }
+  }
+);
 
 export const addToWaitlist = onCall(
   { region: "us-central1" },
@@ -256,12 +399,12 @@ interface GenerateUploadUrlRequest {
 interface GenerateUploadUrlResponse {
   uploadUrl: string;
   destinationPath: string;
+  contractId: string;
 }
 
 export const generateUploadUrl = onCall<GenerateUploadUrlRequest>(
   {
-    region: "us-central1", // Kept consistent with your other functions
-    // We bind the R2 secrets here so we can use them
+    region: "us-central1", // Kept consistent with your nam5 architecture
     secrets: [r2AccessKeyId, r2SecretAccessKey, r2Endpoint, r2BucketName],
   },
   async (
@@ -290,7 +433,31 @@ export const generateUploadUrl = onCall<GenerateUploadUrlRequest>(
     const destinationPath = `contracts/${userId}/${uniqueFileId}/${filename}`;
 
     try {
-      // 4. Initialize S3 Client with Secrets
+      // ---------------------------------------------------------
+      // 4. THE GATEKEEPER: Transactional Credit Check
+      // ---------------------------------------------------------
+      const userRef = db.collection("users").doc(userId);
+
+      await db.runTransaction(async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+
+        if (!userDoc.exists) {
+          throw new HttpsError("not-found", "User profile not found.");
+        }
+
+        const credits = userDoc.data()?.credits || 0;
+
+        if (credits < 1) {
+          throw new HttpsError("resource-exhausted", "Insufficient credits. Please top up.");
+        }
+
+        // Deduct exactly 1 credit atomically.
+        // If they double-click the upload button, Firestore blocks the second attempt.
+        transaction.update(userRef, { credits: credits - 1 });
+      });
+      // ---------------------------------------------------------
+
+      // 5. Initialize S3 Client with Secrets
       const client = new S3Client({
         region: "auto",
         endpoint: r2Endpoint.value(),
@@ -300,7 +467,7 @@ export const generateUploadUrl = onCall<GenerateUploadUrlRequest>(
         },
       });
 
-      // 5. Generate Signed URL
+      // 6. Generate Signed URL
       const command = new PutObjectCommand({
         Bucket: r2BucketName.value(),
         Key: destinationPath,
@@ -310,16 +477,22 @@ export const generateUploadUrl = onCall<GenerateUploadUrlRequest>(
         },
       });
 
-      // URL valid for 5 minutes (300 seconds)
-      const signedUrl = await getSignedUrl(client, command, { expiresIn: 300 });
+      // URL valid for 15 minutes (900 seconds) gives plenty of time for large PDFs
+      const signedUrl = await getSignedUrl(client, command, { expiresIn: 900 });
 
       logger.info(`Generated upload URL for user ${userId}: ${destinationPath}`);
 
+      // 7. Return the payload, including the ID for SvelteKit to track
       return {
         uploadUrl: signedUrl,
         destinationPath: destinationPath,
+        contractId: uniqueFileId, // <-- CRITICAL: Frontend needs this to listen to Firestore!
       };
     } catch (error) {
+      // Catching the specific HttpsError we threw in the transaction so it reaches the client cleanly
+      if (error instanceof HttpsError) {
+        throw error;
+      }
       logger.error("Error generating signed URL", error);
       throw new HttpsError("internal", "Unable to generate upload URL.");
     }

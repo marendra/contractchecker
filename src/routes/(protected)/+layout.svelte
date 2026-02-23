@@ -90,45 +90,7 @@
     </div>
 {:else}
     <div class="min-h-screen bg-slate-50">
-       <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
-          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-             <div class="flex justify-between items-center h-16">
-                <a href="/dashboard" class="flex items-center gap-2">
-                   <img
-                      src="https://storage.contractchecker.net/logo-small.webp"
-                      alt="ContractChecker Logo"
-                      class="h-8 w-auto"
-                   />
-                </a>
-
-                <nav class="hidden md:flex items-center gap-6">
-                   {#each navItems as item}
-                      <a
-                         href={item.href}
-                         class="text-sm font-medium text-slate-600 hover:text-deep-justice transition-colors"
-                      >
-                         {item.label}
-                      </a>
-                   {/each}
-                </nav>
-
-                <div class="flex items-center gap-4">
-                   <div class="hidden sm:flex items-center gap-2 text-sm">
-                      <User class="h-4 w-4 text-slate-500" />
-                      <span class="text-slate-600">
-                         {$currentUser?.displayName || $currentUser?.email?.split("@")[0]}
-                      </span>
-                   </div>
-                   <Button variant="ghost" size="sm" onclick={handleSignOut}>
-                      <LogOut class="h-4 w-4" />
-                      <span class="hidden sm:inline ml-2">Sign Out</span>
-                   </Button>
-                </div>
-             </div>
-          </div>
-       </header>
-
-       <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+       <main class="max-w-full mx-auto px-0 sm:px-0 lg:px-0 py-0">
           {@render children()}
        </main>
     </div>

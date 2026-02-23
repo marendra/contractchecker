@@ -1,9 +1,24 @@
 <script lang="ts">
   import {
-    FileText, Clock, Shield, AlertTriangle, CheckCircle2, ChevronDown,
-    Upload, CreditCard, Eye, MapPin, Trash2, ArrowRight, Search, Filter,
-    MoreVertical, RefreshCw, Download, Share2, X,
+    FileText, Clock, Shield, AlertTriangle, CheckCircle2,
+    Upload, CreditCard, Eye, MapPin, Trash2, Search, Filter,
+    MoreVertical, RefreshCw, Download, Share2, X, LogOut, User,
   } from "lucide-svelte";
+  import { isAuthenticated, currentUser, authStore } from "$lib/stores/auth";
+
+  const navItems = [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/contracts", label: "My Contracts" },
+    { href: "/analysis", label: "Analysis" },
+    { href: "/settings", label: "Settings" }
+  ];
+
+  async function handleSignOut() {
+    console.log("🔓 [DASHBOARD] Signing out...");
+    await authStore.signOut();
+    document.cookie = "session_uid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    window.location.href = "/login";
+  }
 
   let recentAudits = $state([
     { id: 1, name: "Service Agreement - PT Nusantara", date: "2026-02-15", expiresIn: 2, status: "complete" },
@@ -26,8 +41,8 @@
     { id: 4, name: "Clause & Risk Analysis", completed: true, icon: AlertTriangle },
   ]);
 
-  let showHistoryDropdown = $state(false);
   let showHistoryModal = $state(false);
+  let isMobileDrawerOpen = $state(false);
   let selectedRisk = $state<number | null>(null);
   let highlightedClause = $state<string | null>(null);
   let credits = $state(5);
@@ -46,6 +61,10 @@
     if (!risk) return;
     selectedRisk = riskId;
     highlightedClause = risk.clause;
+
+    // Close mobile drawer if open to allow user to see the highlighted clause
+    isMobileDrawerOpen = false;
+
     const sectionId = "pdf-" + risk.clause.toLowerCase().replace(/\s+/g, "-");
     const section = document.getElementById(sectionId);
     if (section) {
@@ -61,46 +80,18 @@
 
 <div class="h-screen w-full bg-slate-50 overflow-hidden flex flex-col font-sans">
   <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
-    <div class="flex items-center gap-3">
-      <img src="https://storage.contractchecker.net/logo-small.webp" alt="ContractChecker Logo" class="h-8 w-auto" />
-      <span class="font-serif text-lg font-semibold text-slate-900">ContractChecker.net</span>
-    </div>
+    <div class="flex items-center gap-6">
+      <a href="/dashboard" class="flex items-center gap-2">
+        <img src="https://storage.contractchecker.net/logo-small.webp" alt="ContractChecker Logo" class="h-8 w-auto" />
+      </a>
 
-    <div class="relative">
-      <button onclick={() => (showHistoryDropdown = !showHistoryDropdown)} class="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
-        <Clock class="h-4 w-4 text-slate-600" />
-        <span class="text-sm font-medium text-slate-700">Recent Audits</span>
-        <ChevronDown class="h-4 w-4 text-slate-500 transition-transform {showHistoryDropdown ? 'rotate-180' : ''}" />
-      </button>
-
-      {#if showHistoryDropdown}
-        <div class="absolute top-full left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
-          <div class="p-3 border-b border-slate-100">
-            <h3 class="text-sm font-semibold text-slate-800">Recent Files</h3>
-          </div>
-          <div class="max-h-64 overflow-y-auto">
-            {#each recentAudits as audit}
-              <button class="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors border-b border-slate-50">
-                <div class="flex items-center gap-3">
-                  <FileText class="h-4 w-4 text-slate-400" />
-                  <div class="text-left">
-                    <p class="text-sm font-medium text-slate-800 truncate max-w-[180px]">{audit.name}</p>
-                    <p class="text-xs text-slate-500">{formatDate(audit.date)}</p>
-                  </div>
-                </div>
-                <span class="text-xs px-2 py-1 rounded-full {audit.expiresIn <= 3 ? 'bg-red-100 text-red-700' : audit.expiresIn <= 5 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}">
-                  {audit.expiresIn}d left
-                </span>
-              </button>
-            {/each}
-          </div>
-          <div class="p-3 border-t border-slate-100 bg-slate-50">
-            <button onclick={() => { showHistoryDropdown = false; showHistoryModal = true; }} class="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg">
-              View All History <ArrowRight class="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      {/if}
+      <nav class="hidden md:flex items-center gap-6">
+        {#each navItems as item}
+          <a href={item.href} class="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
+            {item.label}
+          </a>
+        {/each}
+      </nav>
     </div>
 
     <div class="flex items-center gap-4">
@@ -111,11 +102,31 @@
       <button class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm">
         <Upload class="h-4 w-4" /> <span class="text-sm font-medium">Upload New</span>
       </button>
+
+      <div class="flex items-center gap-2 pl-4 border-l border-slate-200">
+        <div class="hidden sm:flex items-center gap-2 text-sm">
+          <User class="h-4 w-4 text-slate-500" />
+          <span class="text-slate-600">{$currentUser?.displayName || $currentUser?.email?.split("@")[0]}</span>
+        </div>
+        <button onclick={handleSignOut} class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
+          <LogOut class="h-4 w-4" />
+          <span class="hidden sm:inline">Sign Out</span>
+        </button>
+      </div>
     </div>
   </header>
 
   <main class="flex-1 flex overflow-hidden">
-    <aside class="w-[35%] bg-white border-r border-slate-200 flex flex-col overflow-hidden">
+    <!-- Mobile trigger button for risks drawer -->
+    <button
+      onclick={() => isMobileDrawerOpen = true}
+      class="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg"
+    >
+      <AlertTriangle class="h-5 w-5" />
+      <span class="text-sm font-medium">{risks.length} Risks Found</span>
+    </button>
+
+    <aside class="hidden md:flex w-[35%] bg-white border-r border-slate-200 flex flex-col overflow-hidden">
       <div class="p-4 border-b border-slate-200 bg-slate-50">
         <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Analysis Pipeline</h2>
         <div class="flex flex-col gap-3">
@@ -237,6 +248,83 @@
         </div>
       </div>
     </section>
+
+    <!-- Mobile Bottom Sheet -->
+    {#if isMobileDrawerOpen}
+      <div
+        class="md:hidden fixed inset-0 bg-black/50 z-40"
+        role="button"
+        tabindex="0"
+        onclick={() => isMobileDrawerOpen = false}
+        onkeydown={(e) => e.key === 'Escape' && (isMobileDrawerOpen = false)}
+      ></div>
+      <div class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] max-h-[80vh] flex flex-col">
+        <!-- Drag handle -->
+        <div class="flex justify-center pt-3 pb-2">
+          <div class="w-12 h-1.5 bg-slate-300 rounded-full"></div>
+        </div>
+
+        <!-- Header with close button -->
+        <div class="flex items-center justify-between px-4 pb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <AlertTriangle class="h-5 w-5 text-amber-500" />
+            <span class="font-semibold text-slate-800">{risks.length} Risks Detected</span>
+          </div>
+          <button
+            onclick={() => isMobileDrawerOpen = false}
+            class="p-2 hover:bg-slate-100 rounded-full"
+          >
+            <X class="h-5 w-5 text-slate-500" />
+          </button>
+        </div>
+
+        <!-- Scrollable content -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-4">
+          <!-- Analysis Pipeline (Mobile) -->
+          <div class="bg-slate-50 rounded-xl p-4">
+            <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Analysis Pipeline</h2>
+            <div class="flex flex-col gap-2">
+              {#each analysisStages as stage, i}
+                <div class="flex items-center gap-3">
+                  <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 {stage.completed ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'}">
+                    {#if stage.completed}<CheckCircle2 class="h-4 w-4" />{:else}<svelte:component this={stage.icon} class="h-3 w-3" />{/if}
+                  </div>
+                  <p class="text-xs font-medium {stage.completed ? 'text-slate-800' : 'text-slate-500'}">{stage.name}</p>
+                </div>
+              {/each}
+            </div>
+          </div>
+
+          <!-- Risk Analysis (Mobile) -->
+          <div>
+            <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Risk Analysis</h2>
+            <div class="space-y-3">
+              {#each risks as risk}
+                <div class="rounded-xl border p-3 transition-all {risk.level === 'high' ? 'bg-red-50 border-red-200' : risk.level === 'medium' ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'} {selectedRisk === risk.id ? 'ring-2 ring-blue-600' : ''}">
+                  <div class="flex items-start justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="w-2 h-2 rounded-full shrink-0 mt-1 {risk.level === 'high' ? 'bg-red-500' : risk.level === 'medium' ? 'bg-amber-500' : 'bg-green-500'}"></span>
+                      <div>
+                        <h3 class="text-sm font-semibold text-slate-800">{risk.title}</h3>
+                        <p class="text-xs text-slate-500">Page {risk.page}</p>
+                      </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium capitalize {risk.level === 'high' ? 'bg-red-100 text-red-700' : risk.level === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}">{risk.level}</span>
+                  </div>
+                  <p class="text-xs text-slate-600 mb-2">{risk.description}</p>
+                  <button
+                    onclick={() => locateClause(risk.id)}
+                    class="flex items-center gap-1 px-2 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 w-full justify-center"
+                  >
+                    <MapPin class="h-3 w-3" /> Locate in Document
+                  </button>
+                </div>
+              {/each}
+            </div>
+          </div>
+        </div>
+      </div>
+    {/if}
   </main>
 
   {#if showHistoryModal}
