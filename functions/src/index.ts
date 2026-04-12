@@ -28,6 +28,7 @@ const r2AccessKeyId = defineSecret("R2_ACCESS_KEY_ID");
 const r2SecretAccessKey = defineSecret("R2_SECRET_ACCESS_KEY");
 const r2Endpoint = defineSecret("R2_ENDPOINT");
 const r2BucketName = defineSecret("R2_BUCKET_NAME");
+const internalApiKey = defineSecret("INTERNAL_API_KEY");
 // We keep your existing RESEND_API_KEY string reference for compatibility with your existing functions
 
 // ==========================================
@@ -44,6 +45,16 @@ interface AddToWaitlistResponse {
   error?: string;
 }
 
+interface ConfirmContractData {
+  contractId: string;
+  entityName: string;
+  countryCode: string;
+}
+
+interface ConfirmContractResponse {
+  success: boolean;
+}
+
 export const contractOrchestrator = onDocumentUpdated(
   {
     // Listening to the specific user's sub-collection
@@ -51,7 +62,7 @@ export const contractOrchestrator = onDocumentUpdated(
     database: "contract-checker",
     region: "us-central1",
     // These must be set via: firebase functions:secrets:set <NAME>
-    secrets: ["CLOUD_RUN_URL", "SERVICE_ACCOUNT_EMAIL"],
+    secrets: ["CLOUD_RUN_URL", "SERVICE_ACCOUNT_EMAIL", internalApiKey],
   },
   async (event) => {
     const beforeData = event.data?.before.data();
@@ -135,6 +146,10 @@ export const contractOrchestrator = onDocumentUpdated(
         contractId: contractId,
         ocrText: afterData.ocr_result,
         investigationReport: afterData.due_diligence_report,
+        countryCode:
+            afterData.user_verification?.countryCode ||
+            afterData.extracted_client_info?.countryCode ||
+            "US",
       };
       logger.info(`[Orchestrator] Queuing Final Audit Task for [${contractId}]`);
       break;
@@ -166,12 +181,19 @@ export const contractOrchestrator = onDocumentUpdated(
           oidcToken: oidcToken,
           headers: {
             "Content-Type": "application/json",
+            "X-Internal-API-Key": internalApiKey.value(),
           },
           body: Buffer.from(JSON.stringify(payload)).toString("base64"),
         },
       };
 
       await tasksClient.createTask({ parent: queuePath, task });
+
+      // Update lastActionAt timestamp for fast tracking
+      await event.data?.after.ref.update({
+        lastActionAt: Date.now(),
+      });
+
       logger.info(`[Orchestrator] Successfully dispatched task to ${targetEndpoint}`);
     } catch (error) {
       logger.error(`[Orchestrator] FAILED to dispatch task for [${contractId}]`, error);
@@ -180,6 +202,7 @@ export const contractOrchestrator = onDocumentUpdated(
       await event.data?.after.ref.update({
         status: "error",
         error_msg: "Orchestrator failed to trigger the AI worker. Please try again.",
+        lastActionAt: Date.now(),
       });
     }
   }
@@ -450,10 +473,6 @@ export const generateUploadUrl = onCall<GenerateUploadUrlRequest>(
         if (credits < 1) {
           throw new HttpsError("resource-exhausted", "Insufficient credits. Please top up.");
         }
-
-        // Deduct exactly 1 credit atomically.
-        // If they double-click the upload button, Firestore blocks the second attempt.
-        transaction.update(userRef, { credits: credits - 1 });
       });
       // ---------------------------------------------------------
 
@@ -558,3 +577,43 @@ function getOtpEmailHtml(code: string): string {
     </html>
   `;
 }
+
+export const confirmContract = onCall<ConfirmContractData>(
+  { region: "us-central1" },
+  async (request: CallableRequest<ConfirmContractData>): Promise<ConfirmContractResponse> => {
+    // 1. Auth Check (Hanya user yang login yang bisa konfirmasi)
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "You must be logged in to confirm.");
+    }
+
+    const { contractId, entityName, countryCode } = request.data;
+    const uid = request.auth.uid;
+
+    // 2. Validasi Input
+    if (!contractId || !entityName || !countryCode) {
+      throw new HttpsError("invalid-argument", "Missing required fields.");
+    }
+
+    try {
+      const contractRef = db.collection("users").doc(uid).collection("contracts").doc(contractId);
+
+      // 3. Update Firestore
+      // PERHATIAN: Perubahan ini akan OTOMATIS memicu 'contractOrchestrator' Anda!
+      await contractRef.update({
+        status: "investigating", // <--- Ini kunci utamanya!
+        user_verification: {
+          entityName: entityName,
+          countryCode: countryCode,
+          confirmedAt: Date.now(),
+        },
+        lastActionAt: Date.now(),
+      });
+
+      logger.info(`[confirmContract] User ${uid} confirmed contract ${contractId}`);
+      return { success: true };
+    } catch (error) {
+      logger.error("[confirmContract] Error:", error);
+      throw new HttpsError("internal", "Failed to confirm contract.");
+    }
+  }
+);
